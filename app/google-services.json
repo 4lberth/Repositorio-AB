@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "415409213275",
+    "project_id": "autobody-6a5b2",
+    "storage_bucket": "autobody-6a5b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415409213275:android:28272221f496bc3375d47e",
+        "android_client_info": {
+          "package_name": "com.tecsup.autobody"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCs1kFrsbvRrRoBDfcuAgtHolk65-8U26Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
