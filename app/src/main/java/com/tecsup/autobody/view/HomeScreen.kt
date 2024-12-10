@@ -56,6 +56,12 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    TextButton(onClick = { navController.navigate("addCompany") }) {
+                        Text("Agregar Compañía")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     // Botón de Cerrar sesión
                     TextButton(onClick = {
                         scope.launch { drawerState.close() }

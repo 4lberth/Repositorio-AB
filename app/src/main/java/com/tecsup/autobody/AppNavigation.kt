@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.tecsup.autobody.view.AddCompanyScreen
 import com.tecsup.autobody.view.AddVehicleScreen
 import com.tecsup.autobody.view.HomeScreen
 import com.tecsup.autobody.view.LoginScreen
@@ -26,6 +27,9 @@ fun AppNavigation() {
         composable("add_vehicle?userId={userId}") { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             AddVehicleScreen(userId, authViewModel, navController)
+        }
+        composable("addCompany") {
+            AddCompanyScreen(viewModel = authViewModel, navController = navController)
         }
     }
 }

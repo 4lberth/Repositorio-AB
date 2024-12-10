@@ -1,5 +1,8 @@
 package com.tecsup.autobody.view
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
@@ -19,12 +23,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: NavController) {
     val scope = rememberCoroutineScope()
-
-    // Estado para controlar el diálogo del formulario
     var showDialog by remember { mutableStateOf(false) }
-
-    // Estado para la lista de vehículos
     val vehicles by viewModel.vehicles.collectAsState(initial = emptyList())
+
+    // Carga vehículos al abrir la pantalla
+    LaunchedEffect(userId) {
+        viewModel.fetchVehicles(userId)
+    }
 
     Scaffold(
         topBar = {
@@ -50,10 +55,8 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
                 .padding(16.dp)
         ) {
             Text(text = "Lista de Vehículos", style = MaterialTheme.typography.titleMedium)
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Mostrar lista de vehículos
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(vehicles.size) { index ->
                     val vehicle = vehicles[index]
@@ -64,7 +67,15 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = "Placa: ${vehicle["placa"]}", style = MaterialTheme.typography.titleSmall)
+                            AsyncImage(
+                                model = vehicle["imageUrl"],
+                                contentDescription = "Imagen del Vehículo",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = "Placa: ${vehicle["placa"]}")
                             Text(text = "Año: ${vehicle["año"]}")
                             Text(text = "Marca: ${vehicle["marca"]}")
                             Text(text = "Modelo: ${vehicle["modelo"]}")
@@ -76,27 +87,44 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
         }
     }
 
-    // Diálogo para agregar vehículo
+    LaunchedEffect(userId) {
+        viewModel.fetchVehicles(userId) // Llama al método fetchVehicles con el userId
+    }
+
     if (showDialog) {
         AddVehicleDialog(
             onDismiss = { showDialog = false },
-            onSave = { vehicleData ->
+            onSave = { vehicleData, imageUri ->
                 scope.launch {
-                    viewModel.addVehicle(userId, vehicleData)
-                    showDialog = false
+                    viewModel.addVehicleWithImage(
+                        userId = userId,
+                        vehicleData = vehicleData,
+                        imageUri = imageUri,
+                        onSuccess = { showDialog = false },
+                        onFailure = { /* Manejo de errores */ }
+                    )
                 }
             }
         )
     }
+
 }
 
 @Composable
-fun AddVehicleDialog(onDismiss: () -> Unit, onSave: (Map<String, String>) -> Unit) {
+fun AddVehicleDialog(
+    onDismiss: () -> Unit,
+    onSave: (Map<String, String>, Uri?) -> Unit
+) {
     var placa by remember { mutableStateOf("") }
     var año by remember { mutableStateOf("") }
     var marca by remember { mutableStateOf("") }
     var modelo by remember { mutableStateOf("") }
     var color by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        imageUri = it
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -110,7 +138,7 @@ fun AddVehicleDialog(onDismiss: () -> Unit, onSave: (Map<String, String>) -> Uni
                         "modelo" to modelo,
                         "color" to color
                     )
-                    onSave(vehicleData)
+                    onSave(vehicleData, imageUri)
                 }
             ) {
                 Text("Guardar")
@@ -159,6 +187,16 @@ fun AddVehicleDialog(onDismiss: () -> Unit, onSave: (Map<String, String>) -> Uni
                     label = { Text("Color") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { imagePicker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Seleccionar Imagen")
+                }
+                if (imageUri != null) {
+                    Text(text = "Imagen seleccionada: ${imageUri?.lastPathSegment}")
+                }
             }
         }
     )
