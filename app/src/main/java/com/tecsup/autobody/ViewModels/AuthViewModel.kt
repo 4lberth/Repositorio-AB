@@ -15,6 +15,9 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
+    private val _vehicles = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val vehicles: StateFlow<List<Map<String, String>>> = _vehicles
+
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
@@ -88,6 +91,9 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
+    /**
+     * Recupera el nombre del usuario desde Firestore.
+     */
     fun getUserName(userId: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
         viewModelScope.launch {
             try {
@@ -100,6 +106,35 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
+    /**
+     * Agrega un vehículo asociado al cliente actual.
+     */
+    fun addVehicle(userId: String, vehicleData: Map<String, String>) {
+        viewModelScope.launch {
+            try {
+                val userVehiclesRef = firestore.collection("users").document(userId).collection("vehicles")
+                userVehiclesRef.add(vehicleData).await()
+                fetchVehicles(userId) // Actualizar lista de vehículos después de agregar
+            } catch (e: Exception) {
+                // Maneja el error aquí
+            }
+        }
+    }
+
+    /**
+     * Recupera la lista de vehículos del cliente desde Firestore.
+     */
+    fun fetchVehicles(userId: String) {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("users").document(userId).collection("vehicles").get().await()
+                val vehicleList = snapshot.documents.mapNotNull { it.data as? Map<String, String> }
+                _vehicles.value = vehicleList
+            } catch (e: Exception) {
+                _vehicles.value = emptyList() // Manejo de errores devolviendo una lista vacía
+            }
+        }
+    }
 }
 
 sealed class AuthState {

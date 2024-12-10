@@ -12,14 +12,28 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(name: String?, viewModel: AuthViewModel, navController: NavController) {
+fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavController) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var userName by remember { mutableStateOf("Usuario") }
+
+    // Obtener el nombre del usuario al cargar la pantalla
+    LaunchedEffect(userId) {
+        viewModel.getUserName(
+            userId = userId,
+            onSuccess = { name ->
+                userName = name
+            },
+            onFailure = { error ->
+                userName = error
+            }
+        )
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = true, // Permitir gestos para abrir y cerrar el drawer
-        scrimColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.32f), // Fondo semi-opaco al abrir el drawer
+        gesturesEnabled = true,
+        scrimColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.32f),
         drawerContent = {
             ModalDrawerSheet {
                 Column(
@@ -33,15 +47,23 @@ fun HomeScreen(name: String?, viewModel: AuthViewModel, navController: NavContro
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    TextButton(onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("add_vehicle?userId=$userId") // Redirige a la vista para agregar vehículos
+                    }) {
+                        Text("Vehículos")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     // Botón de Cerrar sesión
                     TextButton(onClick = {
-                        scope.launch { drawerState.close() } // Cierra el drawer al hacer clic
+                        scope.launch { drawerState.close() }
                         viewModel.logoutUser()
                         navController.navigate("login") // Redirige al login
                     }) {
                         Text("Cerrar sesión")
                     }
-
                 }
             }
         }
@@ -49,11 +71,11 @@ fun HomeScreen(name: String?, viewModel: AuthViewModel, navController: NavContro
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(text = "TiraTuOferta") },
+                    title = { Text(text = "Auto Body") },
                     navigationIcon = {
                         IconButton(
                             onClick = {
-                                scope.launch { drawerState.open() } // Abre el drawer
+                                scope.launch { drawerState.open() }
                             }
                         ) {
                             Icon(Icons.Default.Menu, contentDescription = "Abrir menú")
@@ -68,7 +90,7 @@ fun HomeScreen(name: String?, viewModel: AuthViewModel, navController: NavContro
                     .padding(paddingValues)
                     .padding(16.dp)
             ) {
-                Text(text = "Bienvenido, $name", style = MaterialTheme.typography.titleLarge)
+                Text(text = "Bienvenido, $userName", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "¡Has iniciado sesión correctamente!")
             }

@@ -38,20 +38,27 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
-            onClick = { viewModel.loginUser(email, password) },
+            onClick = {
+                viewModel.loginUser(email, password)
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Iniciar Sesión")
         }
 
         when (authState) {
-            is AuthState.Loading -> CircularProgressIndicator()
-            is AuthState.Success -> navController.navigate("home?name=$email") {
-                popUpTo("login") { inclusive = true } // Evitar regresar al login
+            is AuthState.Success -> {
+                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                navController.navigate("home?userId=$userId") {
+                    popUpTo("login") { inclusive = true } // Evitar regresar al login
+                }
             }
-            is AuthState.Error -> Text((authState as AuthState.Error).message, color = MaterialTheme.colorScheme.error)
+            is AuthState.Error -> {
+                Text((authState as AuthState.Error).message, color = MaterialTheme.colorScheme.error)
+            }
             else -> {}
         }
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
