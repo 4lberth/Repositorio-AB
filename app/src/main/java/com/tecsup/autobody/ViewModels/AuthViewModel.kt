@@ -2,15 +2,21 @@ package com.tecsup.autobody.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.tecsup.autobody.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class AuthViewModel(private val authRepository: AuthRepository = AuthRepository()) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
+
+    private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
 
     /**
      * Registra un usuario y guarda datos en Firestore utilizando el repositorio.
@@ -81,6 +87,19 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             _authState.value = AuthState.LoggedOut
         }
     }
+
+    fun getUserName(userId: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val document = firestore.collection("users").document(userId).get().await()
+                val name = document.getString("name") ?: "Usuario"
+                onSuccess(name)
+            } catch (e: Exception) {
+                onFailure("Error al recuperar el nombre del usuario")
+            }
+        }
+    }
+
 }
 
 sealed class AuthState {
