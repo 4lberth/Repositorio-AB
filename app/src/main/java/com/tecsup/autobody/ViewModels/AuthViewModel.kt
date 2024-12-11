@@ -62,7 +62,8 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                         "dni" to dni,
                         "address" to address,
                         "phone" to phone,
-                        "email" to email
+                        "email" to email,
+                        "role" to "cliente" // Por defecto todos son clientes
                     )
                     val saveResult = authRepository.saveUserToFirestore(userId, userData)
                     if (saveResult.isSuccess) {
@@ -78,6 +79,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
 
     // En AuthViewModel
     fun isDniUnique(dni: String, onResult: (Boolean) -> Unit) {
@@ -114,7 +116,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
 
 
 
-    fun loginUser(email: String, password: String) {
+    fun loginUser(email: String, password: String, onRoleDetermined: (String) -> Unit) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
@@ -125,6 +127,13 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     val userId = currentUser?.uid ?: throw Exception("UID no encontrado")
                     fetchVehicles(userId)
                     fetchCompanies(userId)
+                    // Obtener el rol
+                    getUserRole(userId, onSuccess = { role ->
+                        onRoleDetermined(role)
+                    }, onFailure = { errorMsg ->
+                        // Si falla, asumimos cliente o manejamos el error
+                        onRoleDetermined("cliente")
+                    })
                 } else {
                     throw Exception(result.exceptionOrNull()?.message ?: "Error al iniciar sesión")
                 }
@@ -133,6 +142,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
 
     fun logoutUser() {
         viewModelScope.launch {
@@ -152,6 +162,19 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
+    fun getUserRole(userId: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val doc = firestore.collection("users").document(userId).get().await()
+                val role = doc.getString("role") ?: "cliente"
+                onSuccess(role)
+            } catch (e: Exception) {
+                onFailure("Error al obtener el rol: ${e.message}")
+            }
+        }
+    }
+
 
     suspend fun uploadVehicleImage(userId: String, imageUri: Uri): String {
         return try {
@@ -397,4 +420,39 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
+    fun addService(
+        userId: String,
+        vehiclePlaca: String,
+        date: String,
+        hour: String,
+        fuel: String,
+        mileage: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val serviceData = mapOf(
+                    "vehiclePlaca" to vehiclePlaca,
+                    "date" to date,
+                    "hour" to hour,
+                    "fuel" to fuel,
+                    "mileage" to mileage
+                )
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("services")
+                    .add(serviceData)
+                    .await()
+
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al guardar el servicio: ${e.message}")
+            }
+        }
+    }
+
+
+
 }

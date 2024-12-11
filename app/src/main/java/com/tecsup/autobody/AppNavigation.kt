@@ -16,6 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tecsup.autobody.view.AddCompanyScreen
 import com.tecsup.autobody.view.AddVehicleScreen
+import com.tecsup.autobody.view.AdminHomeScreen
 import com.tecsup.autobody.view.HomeScreen
 import com.tecsup.autobody.view.LoginScreen
 import com.tecsup.autobody.view.ProfileScreen
@@ -28,13 +29,14 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val authViewModel = AuthViewModel()
 
+
     // Observa la ruta actual
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStackEntry?.destination
     val currentRoute = currentDestination?.route
 
     // Determina si mostrar el BottomBar
-    val showBottomBar = currentRoute !in listOf("login", "register")
+    val showBottomBar = currentRoute !in listOf("login", "register", "admin_home")
 
     Scaffold(
         bottomBar = {
@@ -95,8 +97,13 @@ fun AppNavigation() {
                 ProfileScreen(userId = userId, viewModel = authViewModel, navController = navController)
             }
             composable("service") {
-                ServiceScreen(navController = navController)
+                ServiceScreen(navController = navController, viewModel = authViewModel)
             }
+            composable("admin_home") {
+                AdminHomeScreen(viewModel = authViewModel, navController = navController)
+            }
+
+
         }
     }
 }

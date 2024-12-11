@@ -37,14 +37,25 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                viewModel.loginUser(email, password)
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Button(onClick = {
+            viewModel.loginUser(email, password, onRoleDetermined = { role ->
+                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                if (role == "admin") {
+                    // Navegar a la vista de administrador
+                    navController.navigate("admin_home") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                } else {
+                    // Navegar a la vista de cliente
+                    navController.navigate("home?userId=$userId") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            })
+        }, modifier = Modifier.fillMaxWidth()) {
             Text("Iniciar Sesión")
         }
+
 
         when (authState) {
             is AuthState.Success -> {
