@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -146,7 +147,7 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 readOnly = true,
                 trailingIcon = {
                     IconButton(onClick = { showDatePicker() }) {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Seleccionar Fecha")
+                        Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar Fecha")
                     }
                 }
             )

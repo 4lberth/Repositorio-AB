@@ -39,8 +39,14 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     private val _personalCompanies = MutableStateFlow<List<Company>>(emptyList())
     val personalCompanies: StateFlow<List<Company>> = _personalCompanies
 
+    private val _services = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val services: StateFlow<List<Map<String, String>>> = _services
+
+    private val _userRole = MutableStateFlow<String>("")
+    val userRole: StateFlow<String> = _userRole
+
     val auth = FirebaseAuth.getInstance()
-    private val firestore = FirebaseFirestore.getInstance()
+    val firestore = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
     fun registerUser(
@@ -76,6 +82,20 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                 }
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Error desconocido")
+            }
+        }
+    }
+
+    fun fetchUserRole(userId: String, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val document = firestore.collection("users").document(userId).get().await()
+                val role = document.getString("role") ?: "cliente" // Por defecto "cliente"
+                _userRole.value = role
+                onComplete()
+            } catch (e: Exception) {
+                _userRole.value = "cliente" // Valor por defecto en caso de error
+                onComplete()
             }
         }
     }
@@ -116,24 +136,28 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
 
 
 
-    fun loginUser(email: String, password: String, onRoleDetermined: (String) -> Unit) {
+
+
+
+    fun logoutUser() {
+        viewModelScope.launch {
+            authRepository.logoutUser()
+            _authState.value = AuthState.LoggedOut
+        }
+    }fun loginUser(email: String, password: String, onRoleDetermined: (String) -> Unit) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
                 val result = authRepository.loginUser(email, password)
                 if (result.isSuccess) {
-                    _authState.value = AuthState.Success
                     val currentUser = auth.currentUser
                     val userId = currentUser?.uid ?: throw Exception("UID no encontrado")
-                    fetchVehicles(userId)
-                    fetchCompanies(userId)
-                    // Obtener el rol
-                    getUserRole(userId, onSuccess = { role ->
-                        onRoleDetermined(role)
-                    }, onFailure = { errorMsg ->
-                        // Si falla, asumimos cliente o manejamos el error
-                        onRoleDetermined("cliente")
-                    })
+
+                    // Verificar el rol del usuario después de iniciar sesión
+                    fetchUserRole(userId) {
+                        onRoleDetermined(_userRole.value) // Llama al callback con el rol obtenido
+                    }
+                    _authState.value = AuthState.Success
                 } else {
                     throw Exception(result.exceptionOrNull()?.message ?: "Error al iniciar sesión")
                 }
@@ -143,13 +167,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-
-    fun logoutUser() {
-        viewModelScope.launch {
-            authRepository.logoutUser()
-            _authState.value = AuthState.LoggedOut
-        }
-    }
 
     fun getUserName(userId: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
         viewModelScope.launch {
@@ -163,17 +180,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-    fun getUserRole(userId: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val doc = firestore.collection("users").document(userId).get().await()
-                val role = doc.getString("role") ?: "cliente"
-                onSuccess(role)
-            } catch (e: Exception) {
-                onFailure("Error al obtener el rol: ${e.message}")
-            }
-        }
-    }
 
 
     suspend fun uploadVehicleImage(userId: String, imageUri: Uri): String {
@@ -452,6 +458,70 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
+    fun fetchServices(userId: String) {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("users")
+                    .document(userId)
+                    .collection("services")
+                    .get()
+                    .await()
+
+                val serviceList = snapshot.documents.mapNotNull { doc ->
+                    (doc.data as? Map<String, String>)?.toMutableMap()?.apply {
+                        this["id"] = doc.id
+                    }
+                } ?: emptyList()
+                _services.value = serviceList
+            } catch (e: Exception) {
+                _services.value = emptyList()
+            }
+        }
+    }
+
+
+    fun deleteService(userId: String, serviceId: String, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("services")
+                    .document(serviceId)
+                    .delete()
+                    .await()
+                fetchServices(userId) // Actualizar la lista de servicios
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al eliminar el servicio: ${e.message}")
+            }
+        }
+    }
+
+    fun updateService(
+        userId: String,
+        serviceId: String,
+        updatedData: Map<String, String>,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("services")
+                    .document(serviceId)
+                    .update(updatedData)
+                    .await()
+                fetchServices(userId) // Actualizar la lista de servicios
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al actualizar el servicio: ${e.message}")
+            }
+        }
+    }
+
+
 
 
 

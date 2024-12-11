@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.tecsup.autobody.view.AddCompanyScreen
 import com.tecsup.autobody.view.AddVehicleScreen
 import com.tecsup.autobody.view.AdminHomeScreen
+import com.tecsup.autobody.view.EditServiceScreen
 import com.tecsup.autobody.view.HomeScreen
 import com.tecsup.autobody.view.LoginScreen
 import com.tecsup.autobody.view.ProfileScreen
@@ -28,7 +29,6 @@ import com.tecsup.autobody.viewmodel.AuthViewModel
 fun AppNavigation() {
     val navController = rememberNavController()
     val authViewModel = AuthViewModel()
-
 
     // Observa la ruta actual
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -42,11 +42,8 @@ fun AppNavigation() {
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
-                    // Si es una ruta con userId, necesitamos manejarlo,
-                    // puedes obtener el userId del ViewModel si el usuario ya inició sesión
                     val userId = authViewModel.auth.currentUser?.uid ?: ""
                     val adjustedItems = bottomBarItems.map { item ->
-                        // Ajustar las rutas que requieren userId
                         if (item.route == "home") {
                             item.copy(route = "home?userId=$userId")
                         } else if (item.route == "add_vehicle") {
@@ -63,7 +60,6 @@ fun AppNavigation() {
                                 navController.navigate(item.route) {
                                     launchSingleTop = true
                                     restoreState = true
-                                    // popUpTo("home") { inclusive = false } // Opcional
                                 }
                             },
                             icon = { Icon(item.icon, contentDescription = item.label) },
@@ -102,12 +98,11 @@ fun AppNavigation() {
             composable("admin_home") {
                 AdminHomeScreen(viewModel = authViewModel, navController = navController)
             }
-
-
+            composable("edit_service?serviceId={serviceId}") { backStackEntry ->
+                val serviceId = backStackEntry.arguments?.getString("serviceId") ?: ""
+                val userId = authViewModel.auth.currentUser?.uid ?: ""
+                EditServiceScreen(serviceId = serviceId, userId = userId, viewModel = authViewModel, navController = navController)
+            }
         }
     }
 }
-
-
-
-

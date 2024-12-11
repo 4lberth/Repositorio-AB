@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
@@ -54,6 +55,18 @@ fun AdminHomeScreen(viewModel: AuthViewModel, navController: NavController) {
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    TextButton(onClick = {
+                        scope.launch { drawerState.close() }
+                        // Navegar a la vista de cliente
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        navController.navigate("home?userId=$userId")
+                    }) {
+                        Text("Ver como Cliente")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
 
                     TextButton(onClick = {
                         scope.launch { drawerState.close() }

@@ -16,6 +16,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
+    val userRole by viewModel.userRole.collectAsState()
 
     Column(
         modifier = Modifier
@@ -37,22 +38,30 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = {
-            viewModel.loginUser(email, password, onRoleDetermined = { role ->
-                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                if (role == "admin") {
-                    // Navegar a la vista de administrador
-                    navController.navigate("admin_home") {
-                        popUpTo("login") { inclusive = true }
-                    }
-                } else {
-                    // Navegar a la vista de cliente
-                    navController.navigate("home?userId=$userId") {
-                        popUpTo("login") { inclusive = true }
+        Button(
+            onClick = {
+                viewModel.loginUser(email, password) { role ->
+                    when (role) {
+                        "admin" -> {
+                            navController.navigate("admin_home") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                        "cliente" -> {
+                            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            navController.navigate("home?userId=$userId") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                        else -> {
+                            // Manejo de error o rol no permitido
+                        }
                     }
                 }
-            })
-        }, modifier = Modifier.fillMaxWidth()) {
+
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Iniciar Sesión")
         }
 
@@ -60,8 +69,20 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         when (authState) {
             is AuthState.Success -> {
                 val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                navController.navigate("home?userId=$userId") {
-                    popUpTo("login") { inclusive = true } // Evitar regresar al login
+                // Verificar el rol antes de navegar
+                viewModel.fetchUserRole(userId) {
+                    when (userRole) {
+                        "admin" -> {
+                            navController.navigate("admin_home") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                        else -> {
+                            navController.navigate("home?userId=$userId") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                    }
                 }
             }
             is AuthState.Error -> {
@@ -69,7 +90,6 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
             }
             else -> {}
         }
-
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -82,6 +102,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         }
     }
 }
+
 
 
 
