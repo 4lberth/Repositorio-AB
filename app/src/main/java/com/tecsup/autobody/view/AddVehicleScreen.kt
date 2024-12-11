@@ -9,6 +9,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -24,8 +26,15 @@ import android.util.Log
 @Composable
 fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: NavController) {
     val scope = rememberCoroutineScope()
-    var showDialog by remember { mutableStateOf(false) }
     val vehicles by viewModel.vehicles.collectAsState(initial = emptyList())
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Variables para edición y eliminación
+    var vehicleToEdit by remember { mutableStateOf<Map<String, String>?>(null) }
+    var vehicleToDelete by remember { mutableStateOf<Map<String, String>?>(null) }
 
     // Carga vehículos al abrir la pantalla
     LaunchedEffect(userId) {
@@ -44,7 +53,7 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar Vehículo")
             }
         }
@@ -61,6 +70,7 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(vehicles.size) { index ->
                     val vehicle = vehicles[index]
+                    val vehicleId = vehicle["id"] ?: return@items
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -76,11 +86,29 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
                                     .height(150.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Placa: ${vehicle["placa"]}")
-                            Text(text = "Año: ${vehicle["año"]}")
-                            Text(text = "Marca: ${vehicle["marca"]}")
-                            Text(text = "Modelo: ${vehicle["modelo"]}")
-                            Text(text = "Color: ${vehicle["color"]}")
+                            Text(text = "Placa: ${vehicle["placa"] ?: ""}")
+                            Text(text = "Año: ${vehicle["año"] ?: ""}")
+                            Text(text = "Marca: ${vehicle["marca"] ?: ""}")
+                            Text(text = "Modelo: ${vehicle["modelo"] ?: ""}")
+                            Text(text = "Color: ${vehicle["color"] ?: ""}")
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                IconButton(onClick = {
+                                    vehicleToEdit = vehicle
+                                    showEditDialog = true
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Editar")
+                                }
+                                IconButton(onClick = {
+                                    vehicleToDelete = vehicle
+                                    showDeleteDialog = true
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                                }
+                            }
                         }
                     }
                 }
@@ -88,25 +116,72 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
         }
     }
 
-    LaunchedEffect(userId) {
-        viewModel.fetchVehicles(userId) // Vuelve a cargar los vehículos
-    }
-
-    if (showDialog) {
+    if (showAddDialog) {
         AddVehicleDialog(
-            onDismiss = { showDialog = false },
+            onDismiss = { showAddDialog = false },
             onSave = { vehicleData, imageUri ->
                 scope.launch {
                     viewModel.addVehicleWithImage(
                         userId = userId,
                         vehicleData = vehicleData,
                         imageUri = imageUri,
-                        onSuccess = { showDialog = false },
+                        onSuccess = { showAddDialog = false },
                         onFailure = { errorMsg ->
                             Log.e("AddVehicle", "Error al agregar el vehículo: $errorMsg")
-                            // Aquí se puede mostrar un Snackbar u otra UI de error.
                         }
                     )
+                }
+            }
+        )
+    }
+
+    if (showEditDialog && vehicleToEdit != null) {
+        EditVehicleDialog(
+            vehicle = vehicleToEdit!!,
+            onDismiss = { showEditDialog = false },
+            onSave = { updatedData, newImageUri ->
+                val vehicleId = vehicleToEdit!!["id"] ?: return@EditVehicleDialog
+                scope.launch {
+                    viewModel.updateVehicle(
+                        userId = userId,
+                        vehicleId = vehicleId,
+                        vehicleData = updatedData,
+                        imageUri = newImageUri,
+                        onSuccess = { showEditDialog = false },
+                        onFailure = { errorMsg ->
+                            Log.e("AddVehicle", "Error al actualizar: $errorMsg")
+                        }
+                    )
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog && vehicleToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Confirmar Eliminación") },
+            text = { Text("¿Estás seguro de que deseas eliminar este vehículo?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val vehicleId = vehicleToDelete!!["id"] ?: ""
+                    scope.launch {
+                        viewModel.deleteVehicle(
+                            userId = userId,
+                            vehicleId = vehicleId,
+                            onSuccess = { showDeleteDialog = false },
+                            onFailure = { errorMsg ->
+                                Log.e("AddVehicle", "Error al eliminar: $errorMsg")
+                            }
+                        )
+                    }
+                }) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
                 }
             }
         )
@@ -118,11 +193,40 @@ fun AddVehicleDialog(
     onDismiss: () -> Unit,
     onSave: (Map<String, String>, Uri?) -> Unit
 ) {
-    var placa by remember { mutableStateOf("") }
-    var año by remember { mutableStateOf("") }
-    var marca by remember { mutableStateOf("") }
-    var modelo by remember { mutableStateOf("") }
-    var color by remember { mutableStateOf("") }
+    VehicleFormDialog(
+        title = "Agregar Vehículo",
+        initialData = mapOf("placa" to "", "año" to "", "marca" to "", "modelo" to "", "color" to ""),
+        onDismiss = onDismiss,
+        onSave = onSave
+    )
+}
+
+@Composable
+fun EditVehicleDialog(
+    vehicle: Map<String, String>,
+    onDismiss: () -> Unit,
+    onSave: (Map<String, String>, Uri?) -> Unit
+) {
+    VehicleFormDialog(
+        title = "Editar Vehículo",
+        initialData = vehicle.filterKeys { it != "id" }, // excluir el id al editar
+        onDismiss = onDismiss,
+        onSave = onSave
+    )
+}
+
+@Composable
+fun VehicleFormDialog(
+    title: String,
+    initialData: Map<String, String>,
+    onDismiss: () -> Unit,
+    onSave: (Map<String, String>, Uri?) -> Unit
+) {
+    var placa by remember { mutableStateOf(initialData["placa"] ?: "") }
+    var año by remember { mutableStateOf(initialData["año"] ?: "") }
+    var marca by remember { mutableStateOf(initialData["marca"] ?: "") }
+    var modelo by remember { mutableStateOf(initialData["modelo"] ?: "") }
+    var color by remember { mutableStateOf(initialData["color"] ?: "") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
@@ -132,18 +236,16 @@ fun AddVehicleDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            Button(
-                onClick = {
-                    val vehicleData = mapOf(
-                        "placa" to placa,
-                        "año" to año,
-                        "marca" to marca,
-                        "modelo" to modelo,
-                        "color" to color
-                    )
-                    onSave(vehicleData, imageUri)
-                }
-            ) {
+            Button(onClick = {
+                val vehicleData = mapOf(
+                    "placa" to placa,
+                    "año" to año,
+                    "marca" to marca,
+                    "modelo" to modelo,
+                    "color" to color
+                )
+                onSave(vehicleData, imageUri)
+            }) {
                 Text("Guardar")
             }
         },
@@ -152,7 +254,7 @@ fun AddVehicleDialog(
                 Text("Cancelar")
             }
         },
-        title = { Text("Agregar Vehículo") },
+        title = { Text(title) },
         text = {
             Column {
                 OutlinedTextField(

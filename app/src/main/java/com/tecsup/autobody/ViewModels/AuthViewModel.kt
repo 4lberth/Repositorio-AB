@@ -136,7 +136,12 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     .collection("vehicles")
                     .get()
                     .await()
-                val vehicleList = snapshot.documents.mapNotNull { it.data as? Map<String, String> }
+                val vehicleList = snapshot.documents.mapNotNull { doc ->
+                    (doc.data as? Map<String, String>)?.toMutableMap()?.apply {
+                        // Agregamos el ID del documento para poder editar/eliminar
+                        this["id"] = doc.id
+                    }
+                } ?: emptyList()
                 _vehicles.value = vehicleList
             } catch (e: Exception) {
                 _vehicles.value = emptyList()
@@ -262,11 +267,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-    /**
-     * Este método se asume que está definido en el AuthViewModel o en el repositorio,
-     * tal como se ha mostrado anteriormente, y que implementa la lógica de subir
-     * el vehículo a Firestore y la imagen a Storage.
-     */
     fun addVehicleWithImage(
         userId: String,
         vehicleData: Map<String, String>,
@@ -292,6 +292,59 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                 onSuccess()
             } catch (e: Exception) {
                 onFailure("Error al agregar el vehículo: ${e.message}")
+            }
+        }
+    }
+
+    fun updateVehicle(
+        userId: String,
+        vehicleId: String,
+        vehicleData: Map<String, String>,
+        imageUri: Uri?,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val updatedVehicleData = vehicleData.toMutableMap()
+                if (imageUri != null) {
+                    val imageUrl = uploadVehicleImage(userId, imageUri)
+                    updatedVehicleData["imageUrl"] = imageUrl
+                }
+
+                val docRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("vehicles")
+                    .document(vehicleId)
+
+                docRef.update(updatedVehicleData as Map<String, Any>).await()
+                fetchVehicles(userId)
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al actualizar el vehículo: ${e.message}")
+            }
+        }
+    }
+
+    fun deleteVehicle(
+        userId: String,
+        vehicleId: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("vehicles")
+                    .document(vehicleId)
+                    .delete()
+                    .await()
+
+                fetchVehicles(userId)
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al eliminar el vehículo: ${e.message}")
             }
         }
     }
