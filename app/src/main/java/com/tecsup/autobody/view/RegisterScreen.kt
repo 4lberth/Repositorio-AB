@@ -23,6 +23,65 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
 
     val authState by viewModel.authState.collectAsState()
 
+    // Estados de error
+    var nameError by remember { mutableStateOf(false) }
+    var dniError by remember { mutableStateOf(false) }
+    var addressError by remember { mutableStateOf(false) }
+    var phoneError by remember { mutableStateOf(false) }
+    var emailError by remember { mutableStateOf(false) }
+    var passwordError by remember { mutableStateOf(false) }
+
+    // Mensaje de error DNI no único
+    var dniNotUniqueError by remember { mutableStateOf(false) }
+
+    fun validateFields(): Boolean {
+        var valid = true
+
+        if (name.isBlank()) {
+            nameError = true
+            valid = false
+        } else {
+            nameError = false
+        }
+
+        if (dni.isBlank()) {
+            dniError = true
+            valid = false
+        } else {
+            dniError = false
+        }
+
+        if (address.isBlank()) {
+            addressError = true
+            valid = false
+        } else {
+            addressError = false
+        }
+
+        if (phone.isBlank()) {
+            phoneError = true
+            valid = false
+        } else {
+            phoneError = false
+        }
+
+        if (email.isBlank()) {
+            emailError = true
+            valid = false
+        } else {
+            emailError = false
+        }
+
+        if (password.isBlank()) {
+            passwordError = true
+            valid = false
+        } else {
+            passwordError = false
+        }
+
+        return valid
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -33,58 +92,114 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
 
         // Campo para Nombre del Cliente
         OutlinedTextField(
-            value = name, onValueChange = { name = it },
+            value = name,
+            onValueChange = {
+                name = it
+                if (it.isNotBlank()) nameError = false
+            },
             label = { Text("Nombre del cliente") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = nameError,
+            supportingText = {
+                if (nameError) Text("Campo obligatorio", color = MaterialTheme.colorScheme.error)
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Campo para DNI/RUC
+        // Campo para DNI/RUC (solo números)
         OutlinedTextField(
-            value = dni, onValueChange = { dni = it },
+            value = dni,
+            onValueChange = {
+                val filtered = it.filter { ch -> ch.isDigit() }
+                dni = filtered
+                if (filtered.isNotBlank()) {
+                    dniError = false
+                    dniNotUniqueError = false
+                }
+            },
             label = { Text("DNI/RUC") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = dniError || dniNotUniqueError,
+            supportingText = {
+                when {
+                    dniError -> Text("Campo obligatorio", color = MaterialTheme.colorScheme.error)
+                    dniNotUniqueError -> Text("Este DNI ya está registrado", color = MaterialTheme.colorScheme.error)
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // Campo para Dirección
         OutlinedTextField(
-            value = address, onValueChange = { address = it },
+            value = address,
+            onValueChange = {
+                address = it
+                if (it.isNotBlank()) addressError = false
+            },
             label = { Text("Dirección") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = addressError,
+            supportingText = {
+                if (addressError) Text("Campo obligatorio", color = MaterialTheme.colorScheme.error)
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Campo para Teléfono
+        // Campo para Teléfono (solo números)
         OutlinedTextField(
-            value = phone, onValueChange = { phone = it },
+            value = phone,
+            onValueChange = {
+                val filtered = it.filter { ch -> ch.isDigit() }
+                phone = filtered
+                if (filtered.isNotBlank()) phoneError = false
+            },
             label = { Text("Teléfono") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            modifier = Modifier.fillMaxWidth()
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            isError = phoneError,
+            supportingText = {
+                if (phoneError) Text("Campo obligatorio", color = MaterialTheme.colorScheme.error)
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // Campo para Correo Electrónico
         OutlinedTextField(
-            value = email, onValueChange = { email = it },
+            value = email,
+            onValueChange = {
+                email = it
+                if (it.isNotBlank()) emailError = false
+            },
             label = { Text("Correo Electrónico") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = emailError,
+            supportingText = {
+                if (emailError) Text("Campo obligatorio", color = MaterialTheme.colorScheme.error)
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // Campo para Contraseña
         OutlinedTextField(
-            value = password, onValueChange = { password = it },
+            value = password,
+            onValueChange = {
+                password = it
+                if (it.isNotBlank()) passwordError = false
+            },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = passwordError,
+            supportingText = {
+                if (passwordError) Text("Campo obligatorio", color = MaterialTheme.colorScheme.error)
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -92,7 +207,17 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
         // Botón de registro
         Button(
             onClick = {
-                viewModel.registerUser(name, dni, address, phone, email, password)
+                if (validateFields()) {
+                    // Primero verificar si el DNI es único
+                    viewModel.isDniUnique(dni) { isUnique ->
+                        if (!isUnique) {
+                            dniNotUniqueError = true
+                        } else {
+                            // Si es único, proceder con el registro
+                            viewModel.registerUser(name, dni, address, phone, email, password)
+                        }
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {

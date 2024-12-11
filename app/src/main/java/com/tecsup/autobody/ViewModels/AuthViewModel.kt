@@ -39,7 +39,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     private val _personalCompanies = MutableStateFlow<List<Company>>(emptyList())
     val personalCompanies: StateFlow<List<Company>> = _personalCompanies
 
-    private val auth = FirebaseAuth.getInstance()
+    val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
@@ -78,6 +78,41 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
+    // En AuthViewModel
+    fun isDniUnique(dni: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("users")
+                    .whereEqualTo("dni", dni)
+                    .get()
+                    .await()
+                // Si no hay documentos, el DNI es único
+                onResult(snapshot.isEmpty)
+            } catch (e: Exception) {
+                // En caso de error, por seguridad decimos que no es único, o manejar el error
+                onResult(false)
+            }
+        }
+    }
+
+    fun fetchUserData(
+        userId: String,
+        onSuccess: (Map<String,String>) -> Unit,
+        onFailure: () -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val doc = firestore.collection("users").document(userId).get().await()
+                val data = doc.data as? Map<String, String> ?: emptyMap()
+                onSuccess(data)
+            } catch (e: Exception) {
+                onFailure()
+            }
+        }
+    }
+
+
 
     fun loginUser(email: String, password: String) {
         viewModelScope.launch {
