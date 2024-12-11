@@ -1,5 +1,6 @@
 package com.tecsup.autobody.view
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,7 @@ import com.tecsup.autobody.viewmodel.AuthViewModel
 import com.tecsup.autobody.viewmodel.Company
 import kotlinx.coroutines.launch
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCompanyScreen(viewModel: AuthViewModel, navController: NavController) {
@@ -33,6 +35,10 @@ fun AddCompanyScreen(viewModel: AuthViewModel, navController: NavController) {
     // Para editar compañías personales
     var showEditDialog by remember { mutableStateOf(false) }
     var companyToEdit by remember { mutableStateOf<Company?>(null) }
+
+    // Para eliminar compañía
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var companyToDelete by remember { mutableStateOf<Company?>(null) }
 
     LaunchedEffect(viewModel.authState.value) {
         if (viewModel.authState.value is AuthState.Success || viewModel.authState.value is AuthState.Idle) {
@@ -90,13 +96,8 @@ fun AddCompanyScreen(viewModel: AuthViewModel, navController: NavController) {
                                     Icon(Icons.Default.Edit, contentDescription = "Editar")
                                 }
                                 IconButton(onClick = {
-                                    scope.launch {
-                                        viewModel.deletePersonalCompany(
-                                            companyId = company.id,
-                                            onSuccess = { },
-                                            onFailure = { errorMessage = it }
-                                        )
-                                    }
+                                    companyToDelete = company
+                                    showDeleteDialog = true
                                 }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                                 }
@@ -141,6 +142,34 @@ fun AddCompanyScreen(viewModel: AuthViewModel, navController: NavController) {
             )
         }
 
+        if (showDeleteDialog && companyToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Confirmar Eliminación") },
+                text = { Text("¿Estás seguro de que deseas eliminar esta compañía?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        scope.launch {
+                            viewModel.deletePersonalCompany(
+                                companyId = companyToDelete!!.id,
+                                onSuccess = { showDeleteDialog = false },
+                                onFailure = { errorMsg ->
+                                    errorMessage = errorMsg
+                                }
+                            )
+                        }
+                    }) {
+                        Text("Eliminar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
         if (errorMessage.isNotBlank()) {
             Snackbar(
                 action = {
@@ -172,8 +201,6 @@ fun AddCompanyDialog(
                 val finalSelected = if (companyName.isNotBlank()) companyName else selectedCompany
                 if (finalSelected.isNotBlank()) {
                     onSave(companyName, selectedCompany)
-                    // companyName: el nuevo nombre (si lo hay)
-                    // selectedCompany: el seleccionado del dropdown (si no se dio un nuevo nombre)
                 }
             }) {
                 Text("Guardar")

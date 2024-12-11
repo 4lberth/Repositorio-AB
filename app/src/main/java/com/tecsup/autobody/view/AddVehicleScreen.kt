@@ -9,8 +9,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,6 +19,8 @@ import coil.compose.AsyncImage
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import android.util.Log
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +119,7 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
     if (showAddDialog) {
         AddVehicleDialog(
             onDismiss = { showAddDialog = false },
-            onSave = { vehicleData, imageUri ->
+            onSave = { vehicleData, imageUri, setPlacaError ->
                 scope.launch {
                     viewModel.addVehicleWithImage(
                         userId = userId,
@@ -128,6 +128,9 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
                         onSuccess = { showAddDialog = false },
                         onFailure = { errorMsg ->
                             Log.e("AddVehicle", "Error al agregar el vehículo: $errorMsg")
+                            if (errorMsg.contains("Ya existe un vehículo con la placa")) {
+                                setPlacaError(errorMsg)
+                            }
                         }
                     )
                 }
@@ -139,7 +142,7 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
         EditVehicleDialog(
             vehicle = vehicleToEdit!!,
             onDismiss = { showEditDialog = false },
-            onSave = { updatedData, newImageUri ->
+            onSave = { updatedData, newImageUri, setPlacaError ->
                 val vehicleId = vehicleToEdit!!["id"] ?: return@EditVehicleDialog
                 scope.launch {
                     viewModel.updateVehicle(
@@ -150,6 +153,9 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
                         onSuccess = { showEditDialog = false },
                         onFailure = { errorMsg ->
                             Log.e("AddVehicle", "Error al actualizar: $errorMsg")
+                            if (errorMsg.contains("Ya existe un vehículo con la placa")) {
+                                setPlacaError(errorMsg)
+                            }
                         }
                     )
                 }
@@ -191,11 +197,11 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
 @Composable
 fun AddVehicleDialog(
     onDismiss: () -> Unit,
-    onSave: (Map<String, String>, Uri?) -> Unit
+    onSave: (Map<String, String>, Uri?, (String) -> Unit) -> Unit
 ) {
     VehicleFormDialog(
         title = "Agregar Vehículo",
-        initialData = mapOf("placa" to "", "año" to "", "marca" to "", "modelo" to "", "color" to ""),
+        initialData = mapOf("placa" to "", "año" to "", "marca" to "ninguno", "modelo" to "ninguno", "color" to "ninguno"),
         onDismiss = onDismiss,
         onSave = onSave
     )
@@ -205,7 +211,7 @@ fun AddVehicleDialog(
 fun EditVehicleDialog(
     vehicle: Map<String, String>,
     onDismiss: () -> Unit,
-    onSave: (Map<String, String>, Uri?) -> Unit
+    onSave: (Map<String, String>, Uri?, (String) -> Unit) -> Unit
 ) {
     VehicleFormDialog(
         title = "Editar Vehículo",
@@ -220,31 +226,88 @@ fun VehicleFormDialog(
     title: String,
     initialData: Map<String, String>,
     onDismiss: () -> Unit,
-    onSave: (Map<String, String>, Uri?) -> Unit
+    onSave: (Map<String, String>, Uri?, (String) -> Unit) -> Unit
 ) {
     var placa by remember { mutableStateOf(initialData["placa"] ?: "") }
     var año by remember { mutableStateOf(initialData["año"] ?: "") }
-    var marca by remember { mutableStateOf(initialData["marca"] ?: "") }
-    var modelo by remember { mutableStateOf(initialData["modelo"] ?: "") }
-    var color by remember { mutableStateOf(initialData["color"] ?: "") }
+
+    // Marca, Modelo, Color con valor "ninguno" por defecto
+    var marca by remember { mutableStateOf(initialData["marca"] ?: "ninguno") }
+    var modelo by remember { mutableStateOf(initialData["modelo"] ?: "ninguno") }
+    var color by remember { mutableStateOf(initialData["color"] ?: "ninguno") }
+
     var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Estados de error
+    var placaError by remember { mutableStateOf(false) }
+    var añoError by remember { mutableStateOf(false) }
+    var errorMessagePlaca by remember { mutableStateOf("") }
+    var añoErrorMessage by remember { mutableStateOf("") }
+
+    val setPlacaError: (String) -> Unit = { msg ->
+        placaError = true
+        errorMessagePlaca = msg
+    }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         imageUri = it
+    }
+
+    fun validateFields(): Boolean {
+        var valid = true
+
+        // Validar placa
+        if (placa.isBlank()) {
+            placaError = true
+            errorMessagePlaca = "La placa es obligatoria."
+            valid = false
+        } else {
+            placaError = false
+            errorMessagePlaca = ""
+        }
+
+        // Validar año
+        if (año.isBlank()) {
+            añoError = true
+            añoErrorMessage = "El año es obligatorio."
+            valid = false
+        } else {
+            añoError = false
+            añoErrorMessage = ""
+        }
+
+        return valid
+    }
+
+    // Función para limpiar "ninguno" al escribir
+    fun clearNinguno(oldVal: String, newVal: String): String {
+        return if (oldVal == "ninguno" && newVal != "ninguno") {
+            // Si el valor era "ninguno" y el usuario teclea algo,
+            // removemos "ninguno" y nos quedamos solo con la parte nueva
+            if (newVal.startsWith("ninguno")) {
+                newVal.removePrefix("ninguno")
+            } else {
+                newVal
+            }
+        } else {
+            newVal
+        }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             Button(onClick = {
-                val vehicleData = mapOf(
-                    "placa" to placa,
-                    "año" to año,
-                    "marca" to marca,
-                    "modelo" to modelo,
-                    "color" to color
-                )
-                onSave(vehicleData, imageUri)
+                if (validateFields()) {
+                    val vehicleData = mapOf(
+                        "placa" to placa,
+                        "año" to año,
+                        "marca" to marca,
+                        "modelo" to modelo,
+                        "color" to color
+                    )
+                    onSave(vehicleData, imageUri, setPlacaError)
+                }
             }) {
                 Text("Guardar")
             }
@@ -259,39 +322,75 @@ fun VehicleFormDialog(
             Column {
                 OutlinedTextField(
                     value = placa,
-                    onValueChange = { placa = it },
+                    onValueChange = {
+                        placa = it
+                        placaError = false
+                        errorMessagePlaca = ""
+                    },
                     label = { Text("Placa (única)") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = placaError,
+                    supportingText = {
+                        if (placaError) {
+                            Text(errorMessagePlaca, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = año,
-                    onValueChange = { año = it },
+                    onValueChange = { input ->
+                        // Solo dígitos
+                        val filtered = input.filter { it.isDigit() }
+                        año = filtered
+                        añoError = false
+                        añoErrorMessage = ""
+                    },
                     label = { Text("Año") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = añoError,
+                    supportingText = {
+                        if (añoError) {
+                            Text(añoErrorMessage, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Marca
                 OutlinedTextField(
                     value = marca,
-                    onValueChange = { marca = it },
+                    onValueChange = { newVal ->
+                        // Si era "ninguno", lo removemos al escribir
+                        marca = clearNinguno(marca, newVal)
+                    },
                     label = { Text("Marca") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Modelo
                 OutlinedTextField(
                     value = modelo,
-                    onValueChange = { modelo = it },
+                    onValueChange = { newVal ->
+                        modelo = clearNinguno(modelo, newVal)
+                    },
                     label = { Text("Modelo") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Color
                 OutlinedTextField(
                     value = color,
-                    onValueChange = { color = it },
+                    onValueChange = { newVal ->
+                        color = clearNinguno(color, newVal)
+                    },
                     label = { Text("Color") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { imagePicker.launch("image/*") },

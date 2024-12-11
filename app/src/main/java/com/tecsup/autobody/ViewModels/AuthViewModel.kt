@@ -276,17 +276,30 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     ) {
         viewModelScope.launch {
             try {
+                // Verificar si ya existe un vehículo con la misma placa
+                val placa = vehicleData["placa"] ?: ""
+                if (placa.isBlank()) {
+                    onFailure("La placa no puede estar vacía.")
+                    return@launch
+                }
+
+                val vehiclesRef = firestore.collection("users").document(userId).collection("vehicles")
+                val querySnapshot = vehiclesRef.whereEqualTo("placa", placa).get().await()
+
+                if (!querySnapshot.isEmpty) {
+                    // Ya existe un vehículo con esa placa
+                    onFailure("Ya existe un vehículo con la placa $placa.")
+                    return@launch
+                }
+
+                // Si no existe, continuamos con el proceso de subida de imagen y agregado
                 val updatedVehicleData = vehicleData.toMutableMap()
                 if (imageUri != null) {
                     val imageUrl = uploadVehicleImage(userId, imageUri)
                     updatedVehicleData["imageUrl"] = imageUrl
                 }
 
-                firestore.collection("users")
-                    .document(userId)
-                    .collection("vehicles")
-                    .add(updatedVehicleData)
-                    .await()
+                vehiclesRef.add(updatedVehicleData).await()
 
                 fetchVehicles(userId)
                 onSuccess()
@@ -295,6 +308,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
 
     fun updateVehicle(
         userId: String,
