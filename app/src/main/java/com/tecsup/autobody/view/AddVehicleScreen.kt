@@ -18,6 +18,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +89,7 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
     }
 
     LaunchedEffect(userId) {
-        viewModel.fetchVehicles(userId) // Llama al método fetchVehicles con el userId
+        viewModel.fetchVehicles(userId) // Vuelve a cargar los vehículos
     }
 
     if (showDialog) {
@@ -101,13 +102,15 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
                         vehicleData = vehicleData,
                         imageUri = imageUri,
                         onSuccess = { showDialog = false },
-                        onFailure = { /* Manejo de errores */ }
+                        onFailure = { errorMsg ->
+                            Log.e("AddVehicle", "Error al agregar el vehículo: $errorMsg")
+                            // Aquí se puede mostrar un Snackbar u otra UI de error.
+                        }
                     )
                 }
             }
         )
     }
-
 }
 
 @Composable

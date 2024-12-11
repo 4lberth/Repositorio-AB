@@ -2,16 +2,21 @@ package com.tecsup.autobody.view
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.tecsup.autobody.viewmodel.AuthState
 import com.tecsup.autobody.viewmodel.AuthViewModel
+import com.tecsup.autobody.viewmodel.Company
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -19,13 +24,20 @@ import kotlinx.coroutines.launch
 fun AddCompanyScreen(viewModel: AuthViewModel, navController: NavController) {
     val scope = rememberCoroutineScope()
     var showDialog by remember { mutableStateOf(false) }
-    var editCompanyDialog by remember { mutableStateOf<String?>(null) }
-    val companies by viewModel.companies.collectAsState(initial = emptyList())
+
+    val globalCompanies by viewModel.globalCompanies.collectAsState(emptyList())
+    val personalCompanies by viewModel.personalCompanies.collectAsState(emptyList())
+
     var errorMessage by remember { mutableStateOf("") }
 
-    // Cargar compañías al abrir la pantalla
-    LaunchedEffect(Unit) {
-        viewModel.fetchCompanies()
+    // Para editar compañías personales
+    var showEditDialog by remember { mutableStateOf(false) }
+    var companyToEdit by remember { mutableStateOf<Company?>(null) }
+
+    LaunchedEffect(viewModel.authState.value) {
+        if (viewModel.authState.value is AuthState.Success || viewModel.authState.value is AuthState.Idle) {
+            viewModel.fetchCompanies()
+        }
     }
 
     Scaffold(
@@ -51,45 +63,82 @@ fun AddCompanyScreen(viewModel: AuthViewModel, navController: NavController) {
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            Text(text = "Lista de Compañías", style = MaterialTheme.typography.titleMedium)
+            Text(text = "Mis Compañías", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Sólo mostramos las compañías personales del usuario actual.
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(companies.size) { index ->
-                    val company = companies[index]
+                items(personalCompanies) { company ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(8.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = company, style = MaterialTheme.typography.bodyLarge)
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                // Botón para editar compañía
-                                TextButton(onClick = { editCompanyDialog = company }) {
-                                    Text("Editar")
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = company.name, style = MaterialTheme.typography.bodyLarge)
+                            Row {
+                                IconButton(onClick = {
+                                    companyToEdit = company
+                                    showEditDialog = true
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Editar")
                                 }
-                                // Botón para eliminar compañía
-                                TextButton(onClick = {
+                                IconButton(onClick = {
                                     scope.launch {
-                                        viewModel.deleteCompany(
-                                            companyName = company,
-                                            onSuccess = { errorMessage = "Compañía eliminada con éxito" },
+                                        viewModel.deletePersonalCompany(
+                                            companyId = company.id,
+                                            onSuccess = { },
                                             onFailure = { errorMessage = it }
                                         )
                                     }
                                 }) {
-                                    Text("Eliminar")
+                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+
+        if (showDialog) {
+            AddCompanyDialog(
+                onDismiss = { showDialog = false },
+                onSave = { companyName, selectedCompanyName ->
+                    scope.launch {
+                        viewModel.addCompanyToUser(
+                            companyName = companyName,
+                            selectedCompanyName = selectedCompanyName,
+                            onSuccess = { showDialog = false },
+                            onFailure = { errorMessage = it }
+                        )
+                    }
+                },
+                globalCompanies = globalCompanies
+            )
+        }
+
+        if (showEditDialog && companyToEdit != null) {
+            EditCompanyDialog(
+                currentName = companyToEdit!!.name,
+                onDismiss = { showEditDialog = false },
+                onSave = { newName ->
+                    scope.launch {
+                        viewModel.updatePersonalCompany(
+                            companyId = companyToEdit!!.id,
+                            newName = newName,
+                            onSuccess = { showEditDialog = false },
+                            onFailure = { errorMessage = it }
+                        )
+                    }
+                }
+            )
         }
 
         if (errorMessage.isNotBlank()) {
@@ -104,67 +153,27 @@ fun AddCompanyScreen(viewModel: AuthViewModel, navController: NavController) {
             }
         }
     }
-
-    // Diálogo para agregar compañía
-    if (showDialog) {
-        AddCompanyDialog(
-            onDismiss = { showDialog = false },
-            onSave = { companyName ->
-                scope.launch {
-                    viewModel.addCompany(
-                        companyName,
-                        onSuccess = {
-                            showDialog = false
-                            errorMessage = "Compañía agregada con éxito"
-                        },
-                        onFailure = { errorMessage = it }
-                    )
-                }
-            },
-            companies = companies
-        )
-    }
-
-    // Diálogo para editar compañía
-    if (editCompanyDialog != null) {
-        EditCompanyDialog(
-            currentName = editCompanyDialog!!,
-            onDismiss = { editCompanyDialog = null },
-            onSave = { newName ->
-                scope.launch {
-                    viewModel.updateCompany(
-                        oldName = editCompanyDialog!!,
-                        newName = newName,
-                        onSuccess = {
-                            editCompanyDialog = null
-                            errorMessage = "Compañía actualizada con éxito"
-                        },
-                        onFailure = { errorMessage = it }
-                    )
-                }
-            }
-        )
-    }
 }
-
 
 @Composable
 fun AddCompanyDialog(
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
-    companies: List<String>
+    onSave: (String, String) -> Unit,
+    globalCompanies: List<Company>
 ) {
-    var companyName by remember { mutableStateOf("") }
-    var selectedCompany by remember { mutableStateOf("") }
+    var companyName by remember { mutableStateOf("") } // Nuevo nombre a agregar globalmente
+    var selectedCompany by remember { mutableStateOf("") } // Nombre seleccionado del dropdown
     var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             Button(onClick = {
-                val finalCompanyName = selectedCompany.ifBlank { companyName }
-                if (finalCompanyName.isNotBlank()) {
-                    onSave(finalCompanyName)
+                val finalSelected = if (companyName.isNotBlank()) companyName else selectedCompany
+                if (finalSelected.isNotBlank()) {
+                    onSave(companyName, selectedCompany)
+                    // companyName: el nuevo nombre (si lo hay)
+                    // selectedCompany: el seleccionado del dropdown (si no se dio un nuevo nombre)
                 }
             }) {
                 Text("Guardar")
@@ -175,13 +184,14 @@ fun AddCompanyDialog(
                 Text("Cancelar")
             }
         },
-        title = { Text("Agregar o Seleccionar Compañía") },
+        title = { Text("Agregar Compañía") },
         text = {
             Column {
+                // Desplegable de compañías globales existentes
                 OutlinedTextField(
                     value = selectedCompany,
                     onValueChange = {},
-                    label = { Text("Seleccionar Compañía") },
+                    label = { Text("Seleccionar Compañía Global") },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
                     trailingIcon = {
@@ -194,22 +204,29 @@ fun AddCompanyDialog(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    companies.forEach { company ->
+                    globalCompanies.forEach { company ->
                         DropdownMenuItem(
-                            text = { Text(company) },
+                            text = { Text(company.name) },
                             onClick = {
-                                selectedCompany = company
+                                selectedCompany = company.name
                                 expanded = false
                             }
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Campo para agregar una nueva compañía global si no existe
                 OutlinedTextField(
                     value = companyName,
                     onValueChange = { companyName = it },
                     label = { Text("Nueva Compañía (opcional)") },
                     modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
+                    text = "Si ingresas un nuevo nombre, se añadirá a la lista global. De lo contrario, selecciona una existente del desplegable.",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         }
@@ -217,11 +234,7 @@ fun AddCompanyDialog(
 }
 
 @Composable
-fun EditCompanyDialog(
-    currentName: String,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit
-) {
+fun EditCompanyDialog(currentName: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     var newName by remember { mutableStateOf(currentName) }
 
     AlertDialog(
@@ -240,7 +253,7 @@ fun EditCompanyDialog(
                 Text("Cancelar")
             }
         },
-        title = { Text("Editar Compañía") },
+        title = { Text("Editar Compañía Personal") },
         text = {
             OutlinedTextField(
                 value = newName,
@@ -251,5 +264,3 @@ fun EditCompanyDialog(
         }
     )
 }
-
-

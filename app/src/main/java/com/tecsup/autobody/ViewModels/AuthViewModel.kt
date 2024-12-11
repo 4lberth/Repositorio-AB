@@ -12,6 +12,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+data class Company(
+    val name: String,
+    val id: String
+)
+
+sealed class AuthState {
+    object Idle : AuthState()
+    object Loading : AuthState()
+    object Success : AuthState()
+    object LoggedOut : AuthState()
+    data class Error(val message: String) : AuthState()
+}
+
 class AuthViewModel(private val authRepository: AuthRepository = AuthRepository()) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -20,16 +33,16 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     private val _vehicles = MutableStateFlow<List<Map<String, String>>>(emptyList())
     val vehicles: StateFlow<List<Map<String, String>>> = _vehicles
 
-    private val _companies = MutableStateFlow<List<String>>(emptyList())
-    val companies: StateFlow<List<String>> = _companies
+    private val _globalCompanies = MutableStateFlow<List<Company>>(emptyList())
+    val globalCompanies: StateFlow<List<Company>> = _globalCompanies
+
+    private val _personalCompanies = MutableStateFlow<List<Company>>(emptyList())
+    val personalCompanies: StateFlow<List<Company>> = _personalCompanies
 
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
-    /**
-     * Registrar usuario y guardar información en Firestore.
-     */
     fun registerUser(
         name: String,
         dni: String,
@@ -66,9 +79,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-    /**
-     * Iniciar sesión y cargar vehículos del usuario.
-     */
     fun loginUser(email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
@@ -79,6 +89,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     val currentUser = auth.currentUser
                     val userId = currentUser?.uid ?: throw Exception("UID no encontrado")
                     fetchVehicles(userId)
+                    fetchCompanies(userId)
                 } else {
                     throw Exception(result.exceptionOrNull()?.message ?: "Error al iniciar sesión")
                 }
@@ -88,9 +99,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-    /**
-     * Cerrar sesión del usuario.
-     */
     fun logoutUser() {
         viewModelScope.launch {
             authRepository.logoutUser()
@@ -98,9 +106,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-    /**
-     * Obtener nombre de usuario desde Firestore.
-     */
     fun getUserName(userId: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
         viewModelScope.launch {
             try {
@@ -113,9 +118,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-    /**
-     * Subir imagen de vehículo a Firebase Storage.
-     */
     suspend fun uploadVehicleImage(userId: String, imageUri: Uri): String {
         return try {
             val storageRef = storage.reference.child("vehicles/$userId/${imageUri.lastPathSegment}")
@@ -126,9 +128,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-    /**
-     * Recuperar vehículos asociados al usuario.
-     */
     fun fetchVehicles(userId: String) {
         viewModelScope.launch {
             try {
@@ -145,8 +144,128 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
+    fun fetchCompanies(userId: String? = auth.currentUser?.uid) {
+        viewModelScope.launch {
+            // Cargar globales
+            try {
+                val globalSnapshot = firestore.collection("companies_global").get().await()
+                val globalList = globalSnapshot.documents.mapNotNull { doc ->
+                    doc.getString("name")?.let { Company(it, doc.id) }
+                }
+                _globalCompanies.value = globalList
+            } catch (e: Exception) {
+                _globalCompanies.value = emptyList()
+            }
+
+            // Cargar personales del usuario actual
+            if (userId != null) {
+                try {
+                    val personalSnapshot = firestore.collection("users")
+                        .document(userId)
+                        .collection("companies")
+                        .get()
+                        .await()
+                    val personalList = personalSnapshot.documents.mapNotNull { doc ->
+                        doc.getString("name")?.let { Company(it, doc.id) }
+                    }
+                    _personalCompanies.value = personalList
+                } catch (e: Exception) {
+                    _personalCompanies.value = emptyList()
+                }
+            } else {
+                _personalCompanies.value = emptyList()
+            }
+        }
+    }
+
+    fun addCompanyToUser(
+        companyName: String,
+        selectedCompanyName: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val userId = auth.currentUser?.uid ?: throw Exception("Usuario no autenticado")
+
+                val finalName = if (companyName.isNotBlank()) {
+                    val globalRef = firestore.collection("companies_global")
+                    val exists = globalRef.whereEqualTo("name", companyName).get().await().isEmpty.not()
+                    if (!exists) {
+                        globalRef.add(mapOf("name" to companyName)).await()
+                    }
+                    companyName
+                } else {
+                    selectedCompanyName
+                }
+
+                val userCompaniesRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("companies")
+                val personalExists = userCompaniesRef.whereEqualTo("name", finalName).get().await().isEmpty.not()
+                if (!personalExists) {
+                    userCompaniesRef.add(mapOf("name" to finalName)).await()
+                }
+
+                fetchCompanies(userId)
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al agregar compañía: ${e.message}")
+            }
+        }
+    }
+
+    fun updatePersonalCompany(
+        companyId: String,
+        newName: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val userId = auth.currentUser?.uid ?: throw Exception("No se encontró usuario")
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("companies")
+                    .document(companyId)
+                    .update("name", newName)
+                    .await()
+
+                fetchCompanies(userId)
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al actualizar compañía personal: ${e.message}")
+            }
+        }
+    }
+
+    fun deletePersonalCompany(
+        companyId: String,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val userId = auth.currentUser?.uid ?: throw Exception("No se encontró usuario")
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("companies")
+                    .document(companyId)
+                    .delete()
+                    .await()
+
+                fetchCompanies(userId)
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure("Error al eliminar compañía personal: ${e.message}")
+            }
+        }
+    }
+
     /**
-     * Agregar un vehículo con o sin imagen.
+     * Este método se asume que está definido en el AuthViewModel o en el repositorio,
+     * tal como se ha mostrado anteriormente, y que implementa la lógica de subir
+     * el vehículo a Firestore y la imagen a Storage.
      */
     fun addVehicleWithImage(
         userId: String,
@@ -176,102 +295,4 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
-
-    /**
-     * Recuperar todas las compañías de Firestore.
-     */
-    fun fetchCompanies() {
-        viewModelScope.launch {
-            try {
-                val snapshot = firestore.collection("companies").get().await()
-                val companyList = snapshot.documents.mapNotNull { it.getString("name") }
-                _companies.value = companyList
-            } catch (e: Exception) {
-                _companies.value = emptyList() // Asegúrate de resetear a una lista vacía en caso de error
-            }
-        }
-    }
-
-
-    /**
-     * Agregar una nueva compañía a Firestore.
-     */
-    fun addCompany(
-        companyName: String,
-        onSuccess: () -> Unit,
-        onFailure: (String) -> Unit
-    ) {
-        viewModelScope.launch {
-            try {
-                val companyData = mapOf("name" to companyName)
-                firestore.collection("companies").add(companyData).await()
-                fetchCompanies()
-                onSuccess()
-            } catch (e: Exception) {
-                onFailure("Error al agregar compañía: ${e.message}")
-            }
-        }
-    }
-
-    fun updateCompany(
-        oldName: String,
-        newName: String,
-        onSuccess: () -> Unit,
-        onFailure: (String) -> Unit
-    ) {
-        viewModelScope.launch {
-            try {
-                val snapshot = firestore.collection("companies")
-                    .whereEqualTo("name", oldName)
-                    .get()
-                    .await()
-                val document = snapshot.documents.firstOrNull()
-                if (document != null) {
-                    document.reference.update("name", newName).await()
-                    fetchCompanies()
-                    onSuccess()
-                } else {
-                    onFailure("Compañía no encontrada")
-                }
-            } catch (e: Exception) {
-                onFailure("Error al actualizar compañía: ${e.message}")
-            }
-        }
-    }
-
-    fun deleteCompany(
-        companyName: String,
-        onSuccess: () -> Unit,
-        onFailure: (String) -> Unit
-    ) {
-        viewModelScope.launch {
-            try {
-                val snapshot = firestore.collection("companies")
-                    .whereEqualTo("name", companyName)
-                    .get()
-                    .await()
-                val document = snapshot.documents.firstOrNull()
-                if (document != null) {
-                    document.reference.delete().await()
-                    fetchCompanies()
-                    onSuccess()
-                } else {
-                    onFailure("Compañía no encontrada")
-                }
-            } catch (e: Exception) {
-                onFailure("Error al eliminar compañía: ${e.message}")
-            }
-        }
-    }
-
-}
-
-
-
-sealed class AuthState {
-    object Idle : AuthState()
-    object Loading : AuthState()
-    object Success : AuthState()
-    object LoggedOut : AuthState()
-    data class Error(val message: String) : AuthState()
 }
