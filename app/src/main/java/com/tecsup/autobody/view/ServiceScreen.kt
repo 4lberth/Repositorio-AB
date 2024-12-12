@@ -27,10 +27,16 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
     LaunchedEffect(userId) {
         if (userId.isNotBlank()) {
             viewModel.fetchVehicles(userId)
+            viewModel.fetchPersonalCompanies(userId)
         }
     }
 
     val vehicles by viewModel.vehicles.collectAsState(emptyList())
+    val companies by viewModel.personalCompanies.collectAsState(emptyList())
+
+    // Estado para compañía
+    var expandedCompany by remember { mutableStateOf(false) }
+    var selectedCompany by remember { mutableStateOf("") }
 
     // Estado para vehículo
     var expandedVehicle by remember { mutableStateOf(false) }
@@ -92,6 +98,50 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Agregar Servicio", style = MaterialTheme.typography.titleLarge)
+
+            // Seleccionar Compañía
+            ExposedDropdownMenuBox(
+                expanded = expandedCompany,
+                onExpandedChange = { expandedCompany = !expandedCompany },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = selectedCompany,
+                    onValueChange = {},
+                    label = { Text("Seleccionar Compañía") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    readOnly = true,
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCompany)
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expandedCompany,
+                    onDismissRequest = { expandedCompany = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (companies.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("No hay compañías registradas") },
+                            onClick = { expandedCompany = false }
+                        )
+                    } else {
+                        companies.forEach { company ->
+                            DropdownMenuItem(
+                                text = { Text(company.name) },
+                                onClick = {
+                                    selectedCompany = company.name
+                                    expandedCompany = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             // Seleccionar Vehículo
             ExposedDropdownMenuBox(
@@ -248,7 +298,9 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
 
             Button(
                 onClick = {
-                    if (selectedVehicle.isNotBlank() && selectedDate.isNotBlank() && selectedHour.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()) {
+                    if (selectedCompany.isNotBlank() && selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
+                        selectedHour.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
+                    ) {
                         scope.launch {
                             viewModel.addService(
                                 userId = userId,
@@ -259,7 +311,6 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                                 mileage = mileage,
                                 onSuccess = {
                                     errorMessage = "Servicio guardado con éxito."
-                                    // Limpiar campos si lo deseas
                                 },
                                 onFailure = {
                                     errorMessage = it
@@ -270,7 +321,8 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                         errorMessage = "Por favor, complete todos los campos."
                     }
                 },
-                enabled = selectedVehicle.isNotBlank() && selectedDate.isNotBlank() && selectedHour.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
+                enabled = selectedCompany.isNotBlank() && selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
+                        selectedHour.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
             ) {
                 Text("Guardar Servicio")
             }

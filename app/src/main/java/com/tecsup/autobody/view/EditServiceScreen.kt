@@ -39,10 +39,18 @@ fun EditServiceScreen(
     var hour by remember { mutableStateOf("Horario de atención: 8:00am - 17:30pm (Receso: 13:00pm - 14:00pm)") }
     var fuel by remember { mutableStateOf("E") }
     var mileage by remember { mutableStateOf("") }
+    var selectedCompany by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
 
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val context = LocalContext.current
+
+    // Obtener las compañías personales
+    LaunchedEffect(userId) {
+        viewModel.fetchCompanies(userId)
+    }
+
+    val personalCompanies by viewModel.personalCompanies.collectAsState()
 
     // Cargar datos actuales del servicio
     LaunchedEffect(serviceId) {
@@ -65,6 +73,7 @@ fun EditServiceScreen(
                 hour = service["hour"] ?: ""
                 fuel = service["fuel"] ?: "E"
                 mileage = service["mileage"] ?: ""
+                selectedCompany = service["companyName"] ?: ""
             } else {
                 errorMessage = "No se encontraron datos para este servicio."
             }
@@ -135,6 +144,15 @@ fun EditServiceScreen(
                 placeholder = { Text("Horario de atención: 8:00am - 17:30pm (Receso: 13:00pm - 14:00pm)") }
             )
 
+            // Selector de compañía
+            DropdownMenuField(
+                label = "Seleccionar Compañía",
+                options = personalCompanies.map { it.name },
+                selectedOption = selectedCompany,
+                onOptionSelected = { selectedCompany = it },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             // Selector de nivel de combustible
             DropdownMenuField(
                 label = "Nivel de Combustible",
@@ -157,7 +175,7 @@ fun EditServiceScreen(
 
             Button(
                 onClick = {
-                    if (placa.isNotBlank() && date.isNotBlank() && hour.isNotBlank() && fuel.isNotBlank() && mileage.isNotBlank()) {
+                    if (placa.isNotBlank() && date.isNotBlank() && hour.isNotBlank() && fuel.isNotBlank() && mileage.isNotBlank() && selectedCompany.isNotBlank()) {
                         scope.launch {
                             viewModel.updateService(
                                 userId = userId,
@@ -167,7 +185,8 @@ fun EditServiceScreen(
                                     "date" to date,
                                     "hour" to hour,
                                     "fuel" to fuel,
-                                    "mileage" to mileage
+                                    "mileage" to mileage,
+                                    "companyName" to selectedCompany
                                 ),
                                 onSuccess = {
                                     navController.popBackStack()

@@ -30,6 +30,7 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
 
     val services by viewModel.services.collectAsState()
 
+
     // Estado para el diálogo de confirmación
     var showDeleteDialog by remember { mutableStateOf(false) }
     var serviceToDelete by remember { mutableStateOf<String?>(null) }
@@ -43,6 +44,7 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
         viewModel.fetchUserRole(userId) {
             userRole = viewModel.userRole.value // Actualizar el rol
         }
+        viewModel.fetchServices(userId)
     }
 
     // Función para eliminar el servicio

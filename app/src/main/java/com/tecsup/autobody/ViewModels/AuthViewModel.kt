@@ -247,6 +247,25 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
+    fun fetchPersonalCompanies(userId: String) {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("users")
+                    .document(userId)
+                    .collection("companies")
+                    .get()
+                    .await()
+                val personalList = snapshot.documents.mapNotNull { doc ->
+                    doc.getString("name")?.let { Company(it, doc.id) }
+                }
+                _personalCompanies.value = personalList
+            } catch (e: Exception) {
+                _personalCompanies.value = emptyList()
+            }
+        }
+    }
+
+
     fun addCompanyToUser(
         companyName: String,
         selectedCompanyName: String,
@@ -473,12 +492,18 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                         this["id"] = doc.id
                     }
                 } ?: emptyList()
+
                 _services.value = serviceList
+
+                // Agregar log para depuración
+                println("Servicios recuperados: $serviceList")
             } catch (e: Exception) {
                 _services.value = emptyList()
+                println("Error al recuperar servicios: ${e.message}")
             }
         }
     }
+
 
 
     fun deleteService(userId: String, serviceId: String, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
