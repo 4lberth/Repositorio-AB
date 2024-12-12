@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import java.util.Date

@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
+import com.google.firebase.auth.FirebaseAuth
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -53,6 +54,17 @@ fun AdminHomeScreen(viewModel: AuthViewModel, navController: NavController) {
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    TextButton(onClick = {
+                        scope.launch { drawerState.close() }
+                        // Navegar a la vista de cliente
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        navController.navigate("home?userId=$userId")
+                    }) {
+                        Text("Ver como Cliente")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Botón para cerrar sesión
                     TextButton(onClick = {
@@ -138,12 +150,12 @@ fun AdminServiceCard(
 ) {
     val vehicleImage = service["vehicleImageUrl"] ?: ""
     val clientName = service["clientName"] ?: "Cliente desconocido"
-    val companyName = service["companyName"] ?: "Sin compañía"
+    val companyName = service["companyName"] // Sin valor por defecto
     val placa = service["vehiclePlaca"] ?: "Sin placa"
     val date = service["date"] ?: "Sin fecha"
     val hour = service["hour"] ?: "Sin hora"
     val serviceId = service["id"] ?: ""
-    val currentStatus = service["status"] ?: "pendiente" // Estado actual del servicio
+    val currentStatus = service["status"] ?: "pendiente"
     val scope = rememberCoroutineScope()
 
     // Formatear el timestamp de createdAt
@@ -161,6 +173,7 @@ fun AdminServiceCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row {
+                // Imagen del vehículo
                 Image(
                     painter = rememberImagePainter(data = vehicleImage),
                     contentDescription = "Imagen del vehículo",
@@ -172,7 +185,10 @@ fun AdminServiceCard(
                 Column {
                     Text(text = "Placa: $placa", style = MaterialTheme.typography.bodyLarge)
                     Text(text = "Cliente: $clientName", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = "Compañía: $companyName", style = MaterialTheme.typography.bodyMedium)
+                    // Mostrar compañía solo si tiene valor
+                    if (!companyName.isNullOrEmpty()) {
+                        Text(text = "Compañía: $companyName", style = MaterialTheme.typography.bodyMedium)
+                    }
                     Text(text = "Fecha: $date", style = MaterialTheme.typography.bodyMedium)
                     Text(text = "Hora: $hour", style = MaterialTheme.typography.bodyMedium)
                     Text(text = "Creado el: $createdAt", style = MaterialTheme.typography.bodySmall)
@@ -223,6 +239,7 @@ fun AdminServiceCard(
         }
     }
 }
+
 
 
 @Composable
