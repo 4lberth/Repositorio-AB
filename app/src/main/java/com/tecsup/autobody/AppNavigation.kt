@@ -23,6 +23,7 @@ import com.tecsup.autobody.view.HomeScreen
 import com.tecsup.autobody.view.LoginScreen
 import com.tecsup.autobody.view.ProfileScreen
 import com.tecsup.autobody.view.RegisterScreen
+import com.tecsup.autobody.view.ServiceDetailsScreen
 import com.tecsup.autobody.view.ServiceScreen
 import com.tecsup.autobody.viewmodel.AuthViewModel
 
@@ -37,7 +38,7 @@ fun AppNavigation() {
     val currentRoute = currentDestination?.route
 
     // Determina si mostrar el BottomBar
-    val showBottomBar = currentRoute !in listOf("login", "register", "admin_home")
+    val showBottomBar = currentRoute !in listOf("login", "register", "admin_home","service_details?serviceId={serviceId}")
 
     Scaffold(
         bottomBar = {
@@ -111,6 +112,15 @@ fun AppNavigation() {
                     navController = navController
                 )
             }
+            composable("service_details?serviceId={serviceId}") { backStackEntry ->
+                val serviceId = backStackEntry.arguments?.getString("serviceId") ?: ""
+                ServiceDetailsScreen(
+                    serviceId = serviceId,
+                    viewModel = authViewModel,
+                    navController = navController
+                )
+            }
+
         }
     }
 }

@@ -150,7 +150,7 @@ fun AdminServiceCard(
 ) {
     val vehicleImage = service["vehicleImageUrl"] ?: ""
     val clientName = service["clientName"] ?: "Cliente desconocido"
-    val companyName = service["companyName"] // Sin valor por defecto
+    val companyName = service["companyName"]
     val placa = service["vehiclePlaca"] ?: "Sin placa"
     val date = service["date"] ?: "Sin fecha"
     val hour = service["hour"] ?: "Sin hora"
@@ -235,7 +235,15 @@ fun AdminServiceCard(
                         }
                     }
                 )
+
+                // Botón para navegar a los detalles del servicio
+                TextButton(onClick = {
+                    navController.navigate("service_details?serviceId=$serviceId")
+                }) {
+                    Text("Ver más detalles")
+                }
             }
+
         }
     }
 }

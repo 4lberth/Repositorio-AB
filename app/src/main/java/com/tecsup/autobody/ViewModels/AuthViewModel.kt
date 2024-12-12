@@ -569,10 +569,30 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
+    suspend fun fetchVehicleStates(): List<String> {
+        return try {
+            val snapshot = firestore.collection("vehicleStates").get().await()
+            snapshot.documents.mapNotNull { it.getString("state") }
+        } catch (e: Exception) {
+            println("Error al obtener estados del vehículo: ${e.message}")
+            emptyList()
+        }
+    }
+
+    fun addVehicleState(newState: String) {
+        viewModelScope.launch {
+            try {
+                val data = mapOf("state" to newState)
+                firestore.collection("vehicleStates").add(data).await()
+                println("Estado agregado exitosamente: $newState")
+            } catch (e: Exception) {
+                println("Error al agregar estado del vehículo: ${e.message}")
+            }
+        }
+    }
 
 
-
-
+    // Métodos relacionados con usuarios
     fun fetchAllServices() {
         viewModelScope.launch {
             try {
@@ -585,12 +605,46 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                         return@mapNotNull null
                     }
 
-                    // Obtener información adicional del usuario
+                    // Obtener información adicional del usuario (Cliente)
                     val userDoc = firestore.collection("users").document(userId).get().await()
-                    val clientName = userDoc.getString("name") ?: "Cliente desconocido"
+                    val clientName = userDoc.getString("name") ?: "Sin información"
+                    val clientDniRuc = userDoc.getString("dni") ?: "Sin información"
+                    val clientAddress = userDoc.getString("address") ?: "Sin información"
+                    val clientPhone = userDoc.getString("phone") ?: "Sin información"
+                    val clientEmail = userDoc.getString("email") ?: "Sin información"
+
+                    // Agregar datos del cliente al servicio
                     serviceData["clientName"] = clientName
-                    serviceData["userId"] = userId // Agregar userId al mapa
+                    serviceData["clientDniRuc"] = clientDniRuc
+                    serviceData["clientAddress"] = clientAddress
+                    serviceData["clientPhone"] = clientPhone
+                    serviceData["clientEmail"] = clientEmail
+
+                    // Obtener información del vehículo
+                    val vehiclePlaca = serviceData["vehiclePlaca"] ?: "Sin información"
+                    val vehicleDoc = firestore.collection("users")
+                        .document(userId)
+                        .collection("vehicles")
+                        .whereEqualTo("placa", vehiclePlaca)
+                        .get()
+                        .await()
+                        .documents.firstOrNull()
+
+                    val vehicleBrand = vehicleDoc?.getString("marca") ?: "Sin información"
+                    val vehicleModel = vehicleDoc?.getString("modelo") ?: "Sin información"
+                    val vehicleYear = vehicleDoc?.getString("año") ?: "Sin información"
+                    val vehicleColor = vehicleDoc?.getString("color") ?: "Sin información"
+
+                    // Agregar datos del vehículo al servicio
+                    serviceData["vehicleBrand"] = vehicleBrand
+                    serviceData["vehicleModel"] = vehicleModel
+                    serviceData["vehicleYear"] = vehicleYear
+                    serviceData["vehicleColor"] = vehicleColor
+
+                    // Agregar identificador del usuario y del servicio
+                    serviceData["userId"] = userId
                     serviceData["id"] = doc.id
+
                     serviceData
                 }
                 _services.value = serviceList
@@ -600,10 +654,5 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
-
-
-
-
-
 
 }
