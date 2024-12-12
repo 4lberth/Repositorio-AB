@@ -100,7 +100,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-
     // En AuthViewModel
     fun isDniUnique(dni: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
@@ -162,7 +161,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-
     fun getUserName(userId: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
         viewModelScope.launch {
             try {
@@ -174,8 +172,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
-
-
 
     suspend fun uploadVehicleImage(userId: String, imageUri: Uri): String {
         return try {
@@ -259,7 +255,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
-
 
     fun addCompanyToUser(
         companyName: String,
@@ -393,8 +388,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-
-
     fun updateVehicle(
         userId: String,
         vehicleId: String,
@@ -439,7 +432,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-
     fun deleteVehicle(
         userId: String,
         vehicleId: String,
@@ -470,30 +462,34 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         hour: String,
         fuel: String,
         mileage: String,
+        companyName: String = "",
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
         viewModelScope.launch {
             try {
-                val serviceData = mapOf(
+                val serviceData = mutableMapOf(
                     "vehiclePlaca" to vehiclePlaca,
                     "date" to date,
                     "hour" to hour,
                     "fuel" to fuel,
                     "mileage" to mileage
                 )
+                if (companyName.isNotEmpty()) {
+                    serviceData["companyName"] = companyName
+                }
                 firestore.collection("users")
                     .document(userId)
                     .collection("services")
                     .add(serviceData)
                     .await()
-
                 onSuccess()
             } catch (e: Exception) {
-                onFailure("Error al guardar el servicio: ${e.message}")
+                onFailure("Error: ${e.message}")
             }
         }
     }
+
 
     fun fetchServices(userId: String) {
         viewModelScope.launch {
@@ -520,8 +516,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
-
-
 
     fun deleteService(userId: String, serviceId: String, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
         viewModelScope.launch {
@@ -562,9 +556,4 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
-
-
-
-
-
 }

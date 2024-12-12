@@ -33,7 +33,6 @@ fun EditServiceScreen(
 ) {
     val scope = rememberCoroutineScope()
 
-    // Estados para los campos del formulario
     var placa by remember { mutableStateOf("") }
     var date by remember { mutableStateOf("") }
     var hour by remember { mutableStateOf("Horario de atención: 8:00am - 17:30pm (Receso: 13:00pm - 14:00pm)") }
@@ -45,14 +44,12 @@ fun EditServiceScreen(
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val context = LocalContext.current
 
-    // Obtener las compañías personales
     LaunchedEffect(userId) {
         viewModel.fetchCompanies(userId)
     }
 
     val personalCompanies by viewModel.personalCompanies.collectAsState()
 
-    // Cargar datos actuales del servicio
     LaunchedEffect(serviceId) {
         try {
             var service = viewModel.services.value.find { it["id"] == serviceId }
@@ -144,16 +141,16 @@ fun EditServiceScreen(
                 placeholder = { Text("Horario de atención: 8:00am - 17:30pm (Receso: 13:00pm - 14:00pm)") }
             )
 
-            // Selector de compañía
-            DropdownMenuField(
-                label = "Seleccionar Compañía",
-                options = personalCompanies.map { it.name },
-                selectedOption = selectedCompany,
-                onOptionSelected = { selectedCompany = it },
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (personalCompanies.isNotEmpty()) {
+                DropdownMenuField(
+                    label = "Seleccionar Compañía",
+                    options = personalCompanies.map { it.name },
+                    selectedOption = selectedCompany,
+                    onOptionSelected = { selectedCompany = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
-            // Selector de nivel de combustible
             DropdownMenuField(
                 label = "Nivel de Combustible",
                 options = listOf("E", "1/4", "1/2", "3/4", "F"),
@@ -175,7 +172,7 @@ fun EditServiceScreen(
 
             Button(
                 onClick = {
-                    if (placa.isNotBlank() && date.isNotBlank() && hour.isNotBlank() && fuel.isNotBlank() && mileage.isNotBlank() && selectedCompany.isNotBlank()) {
+                    if (placa.isNotBlank() && date.isNotBlank() && hour.isNotBlank() && fuel.isNotBlank() && mileage.isNotBlank()) {
                         scope.launch {
                             viewModel.updateService(
                                 userId = userId,
@@ -186,7 +183,7 @@ fun EditServiceScreen(
                                     "hour" to hour,
                                     "fuel" to fuel,
                                     "mileage" to mileage,
-                                    "companyName" to selectedCompany
+                                    "companyName" to if (personalCompanies.isNotEmpty()) selectedCompany else ""
                                 ),
                                 onSuccess = {
                                     navController.popBackStack()

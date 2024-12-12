@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,33 +33,24 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
     val vehicles by viewModel.vehicles.collectAsState(emptyList())
     val companies by viewModel.personalCompanies.collectAsState(emptyList())
 
-    // Estado para compañía
     var expandedCompany by remember { mutableStateOf(false) }
     var selectedCompany by remember { mutableStateOf("") }
 
-    // Estado para vehículo
     var expandedVehicle by remember { mutableStateOf(false) }
     var selectedVehicle by remember { mutableStateOf("") }
 
-    // Estado para fecha
     var selectedDate by remember { mutableStateOf("") }
 
-    // Estado para hora
-    val hours = generateHalfHourIntervals(8, 0, 17, 30)
-    var expandedHour by remember { mutableStateOf(false) }
-    var selectedHour by remember { mutableStateOf("") }
+    var hourInput by remember { mutableStateOf("") }
 
-    // Estado para combustible
     val fuelLevels = listOf("E", "1/4", "1/2", "3/4", "F")
     var expandedFuel by remember { mutableStateOf(false) }
     var selectedFuel by remember { mutableStateOf("") }
 
-    // Estado para kilometraje
     var mileage by remember { mutableStateOf("") }
 
     val context = LocalContext.current
 
-    // DatePickerDialog
     val calendar = Calendar.getInstance()
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     fun showDatePicker() {
@@ -99,37 +89,31 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
         ) {
             Text("Agregar Servicio", style = MaterialTheme.typography.titleLarge)
 
-            // Seleccionar Compañía
-            ExposedDropdownMenuBox(
-                expanded = expandedCompany,
-                onExpandedChange = { expandedCompany = !expandedCompany },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedCompany,
-                    onValueChange = {},
-                    label = { Text("Seleccionar Compañía") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    readOnly = true,
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCompany)
-                    },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                )
-
-                ExposedDropdownMenu(
+            if (companies.isNotEmpty()) {
+                ExposedDropdownMenuBox(
                     expanded = expandedCompany,
-                    onDismissRequest = { expandedCompany = false },
+                    onExpandedChange = { expandedCompany = !expandedCompany },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (companies.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text("No hay compañías registradas") },
-                            onClick = { expandedCompany = false }
-                        )
-                    } else {
+                    OutlinedTextField(
+                        value = selectedCompany,
+                        onValueChange = {},
+                        label = { Text("Seleccionar Compañía") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        readOnly = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCompany)
+                        },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedCompany,
+                        onDismissRequest = { expandedCompany = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         companies.forEach { company ->
                             DropdownMenuItem(
                                 text = { Text(company.name) },
@@ -143,7 +127,6 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             }
 
-            // Seleccionar Vehículo
             ExposedDropdownMenuBox(
                 expanded = expandedVehicle,
                 onExpandedChange = { expandedVehicle = !expandedVehicle },
@@ -188,7 +171,6 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             }
 
-            // Seleccionar Fecha
             OutlinedTextField(
                 value = selectedDate,
                 onValueChange = {},
@@ -202,51 +184,14 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             )
 
-            // Seleccionar Hora
-            ExposedDropdownMenuBox(
-                expanded = expandedHour,
-                onExpandedChange = { expandedHour = !expandedHour },
+            OutlinedTextField(
+                value = hourInput,
+                onValueChange = { hourInput = it },
+                label = { Text("Hora del Servicio") },
+                placeholder = { Text("Horario de atención: 8:00am - 17:30pm (Receso: 13:00pm - 14:00pm)") },
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedHour,
-                    onValueChange = {},
-                    label = { Text("Seleccionar Hora") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    readOnly = true,
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedHour)
-                    },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                )
+            )
 
-                ExposedDropdownMenu(
-                    expanded = expandedHour,
-                    onDismissRequest = { expandedHour = false },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (hours.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text("No hay horas disponibles") },
-                            onClick = { expandedHour = false }
-                        )
-                    } else {
-                        hours.forEach { hour ->
-                            DropdownMenuItem(
-                                text = { Text(hour) },
-                                onClick = {
-                                    selectedHour = hour
-                                    expandedHour = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Seleccionar Combustible
             ExposedDropdownMenuBox(
                 expanded = expandedFuel,
                 onExpandedChange = { expandedFuel = !expandedFuel },
@@ -283,7 +228,6 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             }
 
-            // Ingresar Kilometraje
             OutlinedTextField(
                 value = mileage,
                 onValueChange = { mileage = it },
@@ -298,17 +242,18 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
 
             Button(
                 onClick = {
-                    if (selectedCompany.isNotBlank() && selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
-                        selectedHour.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
+                    if (selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
+                        hourInput.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
                     ) {
                         scope.launch {
                             viewModel.addService(
                                 userId = userId,
                                 vehiclePlaca = selectedVehicle,
                                 date = selectedDate,
-                                hour = selectedHour,
+                                hour = hourInput,
                                 fuel = selectedFuel,
                                 mileage = mileage,
+                                companyName = if (companies.isNotEmpty()) selectedCompany else "",
                                 onSuccess = {
                                     errorMessage = "Servicio guardado con éxito."
                                 },
@@ -320,40 +265,10 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                     } else {
                         errorMessage = "Por favor, complete todos los campos."
                     }
-                },
-                enabled = selectedCompany.isNotBlank() && selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
-                        selectedHour.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
+                }
             ) {
                 Text("Guardar Servicio")
             }
         }
     }
-}
-
-// Generar intervalos de media hora entre 8:00 y 17:30, excluyendo la hora 13:00 a 14:00
-fun generateHalfHourIntervals(startHour: Int, startMin: Int, endHour: Int, endMin: Int): List<String> {
-    val times = mutableListOf<String>()
-    val calendar = Calendar.getInstance()
-    calendar.set(Calendar.HOUR_OF_DAY, startHour)
-    calendar.set(Calendar.MINUTE, startMin)
-    calendar.set(Calendar.SECOND, 0)
-
-    val endCalendar = Calendar.getInstance()
-    endCalendar.set(Calendar.HOUR_OF_DAY, endHour)
-    endCalendar.set(Calendar.MINUTE, endMin)
-    endCalendar.set(Calendar.SECOND, 0)
-
-    val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-
-    while (!calendar.after(endCalendar)) {
-        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
-        // Excluir las horas entre 13:00 y 14:00
-        if (currentHour == 13) {
-            calendar.add(Calendar.MINUTE, 30)
-            continue
-        }
-        times.add(format.format(calendar.time))
-        calendar.add(Calendar.MINUTE, 30)
-    }
-    return times
 }
