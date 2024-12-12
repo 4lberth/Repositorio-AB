@@ -557,4 +557,28 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
+    fun fetchAllServices() {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collectionGroup("services").get().await()
+                val serviceList = snapshot.documents.mapNotNull { doc ->
+                    val serviceData = doc.data as? MutableMap<String, String> ?: return@mapNotNull null
+                    val userId = doc.reference.parent.parent?.id ?: return@mapNotNull null
+
+                    // Obtener información del cliente
+                    val userDoc = firestore.collection("users").document(userId).get().await()
+                    val clientName = userDoc.getString("name") ?: "Cliente desconocido"
+                    serviceData["clientName"] = clientName
+                    serviceData["id"] = doc.id // Agregar el ID del servicio
+                    serviceData
+                }
+
+                _services.value = serviceList
+            } catch (e: Exception) {
+                _services.value = emptyList()
+                println("Error al recuperar servicios: ${e.message}")
+            }
+        }
+    }
 }
