@@ -38,7 +38,9 @@ fun AddVehicleScreen(userId: String, viewModel: AuthViewModel, navController: Na
 
     // Carga vehículos al abrir la pantalla
     LaunchedEffect(userId) {
-        viewModel.fetchVehicles(userId)
+        if (vehicles.isEmpty()) {
+            viewModel.fetchVehicles(userId)
+        }
     }
 
     Scaffold(

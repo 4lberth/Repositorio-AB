@@ -2,7 +2,6 @@ package com.tecsup.autobody
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.CarRepair
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -27,7 +26,7 @@ val bottomBarItems = listOf(
     ),
     BottomBarNavItem(
         route = "addCompany",
-        label = "Compañias",
+        label = "Compañías",
         icon = Icons.Default.Business
     ),
     BottomBarNavItem(
@@ -36,3 +35,4 @@ val bottomBarItems = listOf(
         icon = Icons.Default.Build
     )
 )
+

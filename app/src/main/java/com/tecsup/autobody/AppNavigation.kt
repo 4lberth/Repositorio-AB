@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -28,7 +29,7 @@ import com.tecsup.autobody.viewmodel.AuthViewModel
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    val authViewModel = AuthViewModel()
+    val authViewModel = remember { AuthViewModel() } // El ViewModel se conserva entre las pantallas
 
     // Observa la ruta actual
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -42,24 +43,18 @@ fun AppNavigation() {
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
-                    val userId = authViewModel.auth.currentUser?.uid ?: ""
-                    val adjustedItems = bottomBarItems.map { item ->
-                        if (item.route == "home") {
-                            item.copy(route = "home?userId=$userId")
-                        } else if (item.route == "add_vehicle") {
-                            item.copy(route = "add_vehicle?userId=$userId")
-                        } else {
-                            item
-                        }
-                    }
-
-                    adjustedItems.forEach { item ->
+                    bottomBarItems.forEach { item ->
                         NavigationBarItem(
-                            selected = currentRoute?.startsWith(item.route.substringBefore("?")) == true,
+                            selected = currentRoute == item.route,
                             onClick = {
-                                navController.navigate(item.route) {
-                                    launchSingleTop = true
-                                    restoreState = true
+                                if (currentRoute != item.route) {
+                                    navController.navigate(item.route) {
+                                        launchSingleTop = true
+                                        restoreState = true
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            saveState = true
+                                        }
+                                    }
                                 }
                             },
                             icon = { Icon(item.icon, contentDescription = item.label) },
@@ -77,20 +72,29 @@ fun AppNavigation() {
         ) {
             composable("login") { LoginScreen(navController, authViewModel) }
             composable("register") { RegisterScreen(navController, authViewModel) }
-            composable("home?userId={userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                HomeScreen(userId = userId, viewModel = authViewModel, navController = navController)
+            composable("home") {
+                HomeScreen(
+                    userId = authViewModel.auth.currentUser?.uid.orEmpty(),
+                    viewModel = authViewModel,
+                    navController = navController
+                )
             }
-            composable("add_vehicle?userId={userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                AddVehicleScreen(userId, authViewModel, navController)
+            composable("add_vehicle") {
+                AddVehicleScreen(
+                    userId = authViewModel.auth.currentUser?.uid.orEmpty(),
+                    viewModel = authViewModel,
+                    navController = navController
+                )
             }
             composable("addCompany") {
                 AddCompanyScreen(viewModel = authViewModel, navController = navController)
             }
-            composable("profile?userId={userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                ProfileScreen(userId = userId, viewModel = authViewModel, navController = navController)
+            composable("profile") {
+                ProfileScreen(
+                    userId = authViewModel.auth.currentUser?.uid.orEmpty(),
+                    viewModel = authViewModel,
+                    navController = navController
+                )
             }
             composable("service") {
                 ServiceScreen(navController = navController, viewModel = authViewModel)
@@ -100,9 +104,14 @@ fun AppNavigation() {
             }
             composable("edit_service?serviceId={serviceId}") { backStackEntry ->
                 val serviceId = backStackEntry.arguments?.getString("serviceId") ?: ""
-                val userId = authViewModel.auth.currentUser?.uid ?: ""
-                EditServiceScreen(serviceId = serviceId, userId = userId, viewModel = authViewModel, navController = navController)
+                EditServiceScreen(
+                    serviceId = serviceId,
+                    userId = authViewModel.auth.currentUser?.uid.orEmpty(),
+                    viewModel = authViewModel,
+                    navController = navController
+                )
             }
         }
     }
 }
+
