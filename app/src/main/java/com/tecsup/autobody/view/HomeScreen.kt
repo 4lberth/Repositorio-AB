@@ -1,24 +1,19 @@
 package com.tecsup.autobody.view
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.CarRepair
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.tecsup.autobody.BottomBarNavItem
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,8 +25,6 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
 
     val services by viewModel.services.collectAsState()
 
-
-    // Estado para el diálogo de confirmación
     var showDeleteDialog by remember { mutableStateOf(false) }
     var serviceToDelete by remember { mutableStateOf<String?>(null) }
 
@@ -42,18 +35,17 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
             onFailure = { userName = "Error al obtener nombre" }
         )
         viewModel.fetchUserRole(userId) {
-            userRole = viewModel.userRole.value // Actualizar el rol
+            userRole = viewModel.userRole.value
         }
         viewModel.fetchServices(userId)
     }
 
-    // Función para eliminar el servicio
     fun deleteService(serviceId: String) {
         scope.launch {
             viewModel.deleteService(
                 userId = userId,
                 serviceId = serviceId,
-                onSuccess = { serviceToDelete = null }, // Reiniciar estado tras éxito
+                onSuccess = { serviceToDelete = null },
                 onFailure = { error -> /* Manejar error */ }
             )
         }
@@ -94,11 +86,10 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Mostrar solo si el usuario es admin
                     if (userRole == "admin") {
                         TextButton(onClick = {
                             scope.launch { drawerState.close() }
-                            navController.navigate("admin_home") // Navegar al panel de admin
+                            navController.navigate("admin_home")
                         }) {
                             Text("Regresar al Panel de Administración")
                         }
@@ -162,15 +153,27 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
                 ) {
                     items(services) { service ->
                         val serviceId = service["id"] ?: ""
+                        val createdAt: String = try {
+                            service["createdAt"]?.toLongOrNull()?.let { timestamp ->
+                                java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", java.util.Locale.getDefault()).format(
+                                    Date(timestamp)
+                                )
+                            } ?: "Fecha desconocida"
+                        } catch (e: Exception) {
+                            "Fecha desconocida"
+                        }
+
+
+
                         ServiceCard(
                             userId = userId,
                             serviceId = serviceId,
                             placa = service["vehiclePlaca"] ?: "Sin Placa",
                             date = service["date"] ?: "Sin Fecha",
                             hour = service["hour"] ?: "Sin Hora",
+                            createdAt = createdAt,
                             viewModel = viewModel,
                             onEdit = { id, _ ->
-                                // Navegar a la pantalla de edición
                                 navController.navigate("edit_service?serviceId=$id")
                             },
                             onDelete = { id ->
@@ -181,7 +184,6 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
                     }
                 }
 
-                // Diálogo de confirmación
                 if (showDeleteDialog) {
                     AlertDialog(
                         onDismissRequest = { showDeleteDialog = false },
@@ -218,6 +220,7 @@ fun ServiceCard(
     placa: String,
     date: String,
     hour: String,
+    createdAt: String,
     viewModel: AuthViewModel,
     onEdit: (serviceId: String, currentData: Map<String, String>) -> Unit,
     onDelete: (serviceId: String) -> Unit
@@ -232,12 +235,12 @@ fun ServiceCard(
             Text(text = "Placa: $placa", style = MaterialTheme.typography.bodyLarge)
             Text(text = "Fecha: $date", style = MaterialTheme.typography.bodyMedium)
             Text(text = "Hora: $hour", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "Creado el: $createdAt", style = MaterialTheme.typography.bodySmall)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                // Botón para editar
                 IconButton(
                     onClick = {
                         onEdit(serviceId, mapOf("vehiclePlaca" to placa, "date" to date, "hour" to hour))
@@ -246,7 +249,6 @@ fun ServiceCard(
                     Icon(Icons.Default.Build, contentDescription = "Editar")
                 }
 
-                // Botón para eliminar
                 IconButton(onClick = {
                     onDelete(serviceId)
                 }) {
@@ -256,6 +258,3 @@ fun ServiceCard(
         }
     }
 }
-
-
-

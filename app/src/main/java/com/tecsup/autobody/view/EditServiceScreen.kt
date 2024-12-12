@@ -183,7 +183,7 @@ fun EditServiceScreen(
                                     "hour" to hour,
                                     "fuel" to fuel,
                                     "mileage" to mileage,
-                                    "companyName" to if (personalCompanies.isNotEmpty()) selectedCompany else ""
+                                    "companyName" to (if (personalCompanies.isNotEmpty()) selectedCompany else "")
                                 ),
                                 onSuccess = {
                                     navController.popBackStack()
@@ -199,6 +199,7 @@ fun EditServiceScreen(
             ) {
                 Text("Guardar Cambios")
             }
+
         }
     }
 }

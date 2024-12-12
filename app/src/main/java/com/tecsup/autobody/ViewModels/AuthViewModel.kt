@@ -462,33 +462,34 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         hour: String,
         fuel: String,
         mileage: String,
-        companyName: String = "",
+        companyName: String?,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
         viewModelScope.launch {
             try {
-                val serviceData = mutableMapOf(
+                val serviceData = mapOf(
                     "vehiclePlaca" to vehiclePlaca,
                     "date" to date,
                     "hour" to hour,
                     "fuel" to fuel,
-                    "mileage" to mileage
+                    "mileage" to mileage,
+                    "companyName" to (companyName ?: ""),
+                    "createdAt" to System.currentTimeMillis().toString() // Timestamp actual
                 )
-                if (companyName.isNotEmpty()) {
-                    serviceData["companyName"] = companyName
-                }
                 firestore.collection("users")
                     .document(userId)
                     .collection("services")
                     .add(serviceData)
                     .await()
+
                 onSuccess()
             } catch (e: Exception) {
-                onFailure("Error: ${e.message}")
+                onFailure("Error al guardar el servicio: ${e.message}")
             }
         }
     }
+
 
 
     fun fetchServices(userId: String) {
