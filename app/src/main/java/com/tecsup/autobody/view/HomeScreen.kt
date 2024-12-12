@@ -26,6 +26,7 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var userName by remember { mutableStateOf("Usuario") }
+    var userRole by remember { mutableStateOf("cliente") }
 
     val services by viewModel.services.collectAsState()
 
@@ -39,7 +40,9 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
             onSuccess = { name -> userName = name },
             onFailure = { userName = "Error al obtener nombre" }
         )
-        viewModel.fetchServices(userId)
+        viewModel.fetchUserRole(userId) {
+            userRole = viewModel.userRole.value // Actualizar el rol
+        }
     }
 
     // Función para eliminar el servicio
@@ -85,6 +88,19 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
                         navController.navigate("addCompany")
                     }) {
                         Text("Agregar Compañía")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Mostrar solo si el usuario es admin
+                    if (userRole == "admin") {
+                        TextButton(onClick = {
+                            scope.launch { drawerState.close() }
+                            navController.navigate("admin_home") // Navegar al panel de admin
+                        }) {
+                            Text("Regresar al Panel de Administración")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
