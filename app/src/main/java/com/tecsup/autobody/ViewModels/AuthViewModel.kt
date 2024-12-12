@@ -134,11 +134,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         }
     }
 
-
-
-
-
-
     fun logoutUser() {
         viewModelScope.launch {
             authRepository.logoutUser()
@@ -359,15 +354,17 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     ) {
         viewModelScope.launch {
             try {
-                // Verificar si ya existe un vehículo con la misma placa
+                // Verificar si ya existe un vehículo con la misma placa en toda la colección
                 val placa = vehicleData["placa"] ?: ""
                 if (placa.isBlank()) {
                     onFailure("La placa no puede estar vacía.")
                     return@launch
                 }
 
-                val vehiclesRef = firestore.collection("users").document(userId).collection("vehicles")
-                val querySnapshot = vehiclesRef.whereEqualTo("placa", placa).get().await()
+                val querySnapshot = firestore.collectionGroup("vehicles")
+                    .whereEqualTo("placa", placa)
+                    .get()
+                    .await()
 
                 if (!querySnapshot.isEmpty) {
                     // Ya existe un vehículo con esa placa
@@ -382,7 +379,11 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     updatedVehicleData["imageUrl"] = imageUrl
                 }
 
-                vehiclesRef.add(updatedVehicleData).await()
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("vehicles")
+                    .add(updatedVehicleData)
+                    .await()
 
                 fetchVehicles(userId)
                 onSuccess()
@@ -391,6 +392,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
 
 
     fun updateVehicle(
@@ -404,17 +406,31 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         viewModelScope.launch {
             try {
                 val updatedVehicleData = vehicleData.toMutableMap()
+                val placa = updatedVehicleData["placa"] ?: ""
+
+                // Verificar si la placa ya existe en otro usuario
+                val querySnapshot = firestore.collectionGroup("vehicles")
+                    .whereEqualTo("placa", placa)
+                    .get()
+                    .await()
+
+                if (querySnapshot.documents.any { it.id != vehicleId }) {
+                    onFailure("La placa $placa ya está registrada.")
+                    return@launch
+                }
+
                 if (imageUri != null) {
                     val imageUrl = uploadVehicleImage(userId, imageUri)
                     updatedVehicleData["imageUrl"] = imageUrl
                 }
 
-                val docRef = firestore.collection("users")
+                firestore.collection("users")
                     .document(userId)
                     .collection("vehicles")
                     .document(vehicleId)
+                    .set(updatedVehicleData)
+                    .await()
 
-                docRef.update(updatedVehicleData as Map<String, Any>).await()
                 fetchVehicles(userId)
                 onSuccess()
             } catch (e: Exception) {
@@ -422,6 +438,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
 
     fun deleteVehicle(
         userId: String,

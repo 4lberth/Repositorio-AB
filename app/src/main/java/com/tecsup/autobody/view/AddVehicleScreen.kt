@@ -282,8 +282,6 @@ fun VehicleFormDialog(
     // Función para limpiar "ninguno" al escribir
     fun clearNinguno(oldVal: String, newVal: String): String {
         return if (oldVal == "ninguno" && newVal != "ninguno") {
-            // Si el valor era "ninguno" y el usuario teclea algo,
-            // removemos "ninguno" y nos quedamos solo con la parte nueva
             if (newVal.startsWith("ninguno")) {
                 newVal.removePrefix("ninguno")
             } else {
@@ -340,7 +338,6 @@ fun VehicleFormDialog(
                 OutlinedTextField(
                     value = año,
                     onValueChange = { input ->
-                        // Solo dígitos
                         val filtered = input.filter { it.isDigit() }
                         año = filtered
                         añoError = false
@@ -362,7 +359,6 @@ fun VehicleFormDialog(
                 OutlinedTextField(
                     value = marca,
                     onValueChange = { newVal ->
-                        // Si era "ninguno", lo removemos al escribir
                         marca = clearNinguno(marca, newVal)
                     },
                     label = { Text("Marca") },
