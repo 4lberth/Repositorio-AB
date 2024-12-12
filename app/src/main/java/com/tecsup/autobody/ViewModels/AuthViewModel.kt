@@ -536,27 +536,42 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     }
 
     fun updateService(
-        userId: String,
+        userId: String?,
         serviceId: String,
         updatedData: Map<String, String>,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
         viewModelScope.launch {
+            if (userId.isNullOrEmpty()) {
+                onFailure("Error: userId no válido")
+                return@launch
+            }
+
             try {
+                if (updatedData.isEmpty()) {
+                    onFailure("Los datos a actualizar están vacíos")
+                    return@launch
+                }
+
                 firestore.collection("users")
                     .document(userId)
                     .collection("services")
                     .document(serviceId)
                     .update(updatedData)
                     .await()
-                fetchServices(userId) // Actualizar la lista de servicios
+
+                fetchServices(userId) // Actualiza la lista después de un cambio
                 onSuccess()
             } catch (e: Exception) {
-                onFailure("Error al actualizar el servicio: ${e.message}")
+                onFailure("Error al actualizar servicio: ${e.message}")
             }
         }
     }
+
+
+
+
 
     fun fetchAllServices() {
         viewModelScope.launch {
@@ -564,16 +579,20 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                 val snapshot = firestore.collectionGroup("services").get().await()
                 val serviceList = snapshot.documents.mapNotNull { doc ->
                     val serviceData = doc.data as? MutableMap<String, String> ?: return@mapNotNull null
-                    val userId = doc.reference.parent.parent?.id ?: return@mapNotNull null
+                    val userId = doc.reference.parent.parent?.id
+                    if (userId.isNullOrEmpty()) {
+                        println("Error: userId no encontrado para el documento ${doc.id}")
+                        return@mapNotNull null
+                    }
 
-                    // Obtener información del cliente
+                    // Obtener información adicional del usuario
                     val userDoc = firestore.collection("users").document(userId).get().await()
                     val clientName = userDoc.getString("name") ?: "Cliente desconocido"
                     serviceData["clientName"] = clientName
-                    serviceData["id"] = doc.id // Agregar el ID del servicio
+                    serviceData["userId"] = userId // Agregar userId al mapa
+                    serviceData["id"] = doc.id
                     serviceData
                 }
-
                 _services.value = serviceList
             } catch (e: Exception) {
                 _services.value = emptyList()
@@ -581,4 +600,10 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
+
+
+
+
+
 }

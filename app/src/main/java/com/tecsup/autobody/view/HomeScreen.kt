@@ -8,7 +8,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.tecsup.autobody.viewmodel.AuthViewModel
@@ -163,7 +162,7 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
                             "Fecha desconocida"
                         }
 
-
+                        val status = service["status"] ?: "pendiente"
 
                         ServiceCard(
                             userId = userId,
@@ -172,6 +171,7 @@ fun HomeScreen(userId: String, viewModel: AuthViewModel, navController: NavContr
                             date = service["date"] ?: "Sin Fecha",
                             hour = service["hour"] ?: "Sin Hora",
                             createdAt = createdAt,
+                            status = status,
                             viewModel = viewModel,
                             onEdit = { id, _ ->
                                 navController.navigate("edit_service?serviceId=$id")
@@ -221,6 +221,7 @@ fun ServiceCard(
     date: String,
     hour: String,
     createdAt: String,
+    status: String,
     viewModel: AuthViewModel,
     onEdit: (serviceId: String, currentData: Map<String, String>) -> Unit,
     onDelete: (serviceId: String) -> Unit
@@ -236,6 +237,16 @@ fun ServiceCard(
             Text(text = "Fecha: $date", style = MaterialTheme.typography.bodyMedium)
             Text(text = "Hora: $hour", style = MaterialTheme.typography.bodyMedium)
             Text(text = "Creado el: $createdAt", style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = "Estado: $status",
+                style = MaterialTheme.typography.bodyMedium,
+                color = when (status) {
+                    "confirmado" -> MaterialTheme.colorScheme.primary
+                    "pendiente" -> MaterialTheme.colorScheme.secondary
+                    "cancelado" -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onBackground
+                }
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

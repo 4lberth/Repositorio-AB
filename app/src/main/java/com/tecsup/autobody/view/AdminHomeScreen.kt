@@ -120,7 +120,8 @@ fun AdminHomeScreen(viewModel: AuthViewModel, navController: NavController) {
                     items(filteredServices) { service ->
                         AdminServiceCard(
                             service = service,
-                            navController = navController
+                            navController = navController,
+                            viewModel = viewModel
                         )
                     }
                 }
@@ -130,13 +131,20 @@ fun AdminHomeScreen(viewModel: AuthViewModel, navController: NavController) {
 }
 
 @Composable
-fun AdminServiceCard(service: Map<String, String>, navController: NavController) {
+fun AdminServiceCard(
+    service: Map<String, String>,
+    navController: NavController,
+    viewModel: AuthViewModel
+) {
     val vehicleImage = service["vehicleImageUrl"] ?: ""
     val clientName = service["clientName"] ?: "Cliente desconocido"
     val companyName = service["companyName"] ?: "Sin compañía"
     val placa = service["vehiclePlaca"] ?: "Sin placa"
     val date = service["date"] ?: "Sin fecha"
     val hour = service["hour"] ?: "Sin hora"
+    val serviceId = service["id"] ?: ""
+    val currentStatus = service["status"] ?: "pendiente" // Estado actual del servicio
+    val scope = rememberCoroutineScope()
 
     // Formatear el timestamp de createdAt
     val createdAtTimestamp = service["createdAt"]?.toLongOrNull()
@@ -153,7 +161,6 @@ fun AdminServiceCard(service: Map<String, String>, navController: NavController)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row {
-                // Imagen del vehículo
                 Image(
                     painter = rememberImagePainter(data = vehicleImage),
                     contentDescription = "Imagen del vehículo",
@@ -169,6 +176,16 @@ fun AdminServiceCard(service: Map<String, String>, navController: NavController)
                     Text(text = "Fecha: $date", style = MaterialTheme.typography.bodyMedium)
                     Text(text = "Hora: $hour", style = MaterialTheme.typography.bodyMedium)
                     Text(text = "Creado el: $createdAt", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = "Estado: $currentStatus",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = when (currentStatus) {
+                            "confirmado" -> MaterialTheme.colorScheme.primary
+                            "pendiente" -> MaterialTheme.colorScheme.secondary
+                            "cancelado" -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onBackground
+                        }
+                    )
                 }
             }
 
@@ -176,13 +193,56 @@ fun AdminServiceCard(service: Map<String, String>, navController: NavController)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TextButton(onClick = {
-                    navController.navigate("service_details?serviceId=${service["id"]}")
-                }) {
-                    Text("Ver detalles")
-                }
+                DropdownMenuStatus(
+                    currentStatus = currentStatus,
+                    onStatusChange = { newStatus ->
+                        scope.launch {
+                            val userId = service["userId"]
+                            if (userId.isNullOrEmpty()) {
+                                println("Error: userId no válido para el servicio $serviceId")
+                                return@launch
+                            }
+
+                            println("Actualizando estado a: $newStatus para el servicio: $serviceId del usuario: $userId")
+                            viewModel.updateService(
+                                userId = userId,
+                                serviceId = serviceId,
+                                updatedData = mapOf("status" to newStatus),
+                                onSuccess = {
+                                    println("Estado actualizado correctamente a $newStatus")
+                                    viewModel.fetchAllServices() // Actualizar lista
+                                },
+                                onFailure = { error -> println("Error al actualizar estado: $error") }
+                            )
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun DropdownMenuStatus(currentStatus: String, onStatusChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val statuses = listOf("pendiente", "confirmado", "cancelado")
+
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            Text("Cambiar Estado")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            statuses.forEach { status ->
+                DropdownMenuItem(
+                    onClick = {
+                        expanded = false
+                        onStatusChange(status)
+                    },
+                    text = { Text(text = status.capitalize()) }
+                )
             }
         }
     }
