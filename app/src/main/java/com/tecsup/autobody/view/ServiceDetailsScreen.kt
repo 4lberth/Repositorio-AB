@@ -61,6 +61,7 @@ fun ServiceDetailsScreen(
     ) { paddingValues ->
         if (service != null) {
             Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
                     .padding(paddingValues)
                     .padding(16.dp)
