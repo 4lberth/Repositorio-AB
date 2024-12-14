@@ -463,6 +463,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         fuel: String,
         mileage: String,
         companyName: String?,
+        workDetails: List<String>, // Lista de detalles de trabajo
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
@@ -475,7 +476,8 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     "fuel" to fuel,
                     "mileage" to mileage,
                     "companyName" to (companyName ?: ""),
-                    "createdAt" to System.currentTimeMillis().toString() // Timestamp actual
+                    "workDetails" to workDetails, // Guardar la lista en Firestore
+                    "createdAt" to System.currentTimeMillis().toString()
                 )
                 firestore.collection("users")
                     .document(userId)
@@ -538,7 +540,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     fun updateService(
         userId: String?,
         serviceId: String,
-        updatedData: Map<String, String>,
+        updatedData: Map<String, Any>, // Cambiado a Any para permitir listas
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
@@ -568,6 +570,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
         }
     }
+
 
     suspend fun fetchVehicleStates(): List<String> {
         return try {

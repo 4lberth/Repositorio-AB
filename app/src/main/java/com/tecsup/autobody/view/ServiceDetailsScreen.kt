@@ -2,8 +2,10 @@ package com.tecsup.autobody.view
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,7 +18,6 @@ import androidx.navigation.NavController
 import com.tecsup.autobody.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
-@SuppressLint("StateFlowValueCalledInComposition")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceDetailsScreen(
@@ -24,23 +25,8 @@ fun ServiceDetailsScreen(
     viewModel: AuthViewModel,
     navController: NavController
 ) {
-    val service = viewModel.services.value.find { it["id"] == serviceId }
-    val scope = rememberCoroutineScope()
-    var newVehicleState by remember { mutableStateOf("") }
-    val vehicleStates = remember { mutableStateListOf<String>() }
-    var selectedState by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
-    var showAddStateDialog by remember { mutableStateOf(false) }
-    var textFieldSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
-
-    // Cargar estados existentes desde Firestore
-    LaunchedEffect(Unit) {
-        scope.launch {
-            val states = viewModel.fetchVehicleStates() // Método en ViewModel
-            vehicleStates.clear()
-            vehicleStates.addAll(states)
-        }
-    }
+    // Usar estado recordable
+    val service by remember { derivedStateOf { viewModel.services.value.find { it["id"] == serviceId } } }
 
     Scaffold(
         topBar = {
@@ -48,99 +34,51 @@ fun ServiceDetailsScreen(
                 title = { Text("Detalles del Servicio") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.Add, contentDescription = "Volver")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddStateDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar Estado")
-            }
         }
     ) { paddingValues ->
         if (service != null) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+            LazyColumn(
                 modifier = Modifier
                     .padding(paddingValues)
                     .padding(16.dp)
-                    .fillMaxWidth()
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Detalles del Servicio", style = MaterialTheme.typography.titleLarge)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Datos del cliente
-                Text("Datos del Cliente", style = MaterialTheme.typography.titleMedium)
-                Text("Nombre: ${service["clientName"] ?: "Desconocido"}")
-                Text("DNI/RUC: ${service["clientDniRuc"] ?: "Sin información"}")
-                Text("Dirección: ${service["clientAddress"] ?: "Sin información"}")
-                Text("Teléfono: ${service["clientPhone"] ?: "Sin información"}")
-                Text("Correo Electrónico: ${service["clientEmail"] ?: "Sin información"}")
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Datos del vehículo
-                Text("Datos del Vehículo", style = MaterialTheme.typography.titleMedium)
-                Text("Placa: ${service["vehiclePlaca"] ?: "Sin placa"}")
-                Text("Marca: ${service["vehicleBrand"] ?: "Sin información"}")
-                Text("Modelo: ${service["vehicleModel"] ?: "Sin información"}")
-                Text("Año: ${service["vehicleYear"] ?: "Sin información"}")
-                Text("Color: ${service["vehicleColor"] ?: "Sin información"}")
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Datos del servicio
-                Text("Datos del Servicio", style = MaterialTheme.typography.titleMedium)
-                Text("Fecha: ${service["date"] ?: "Sin información"}")
-                Text("Hora: ${service["hour"] ?: "Sin información"}")
-                Text("Kilometraje: ${service["mileage"] ?: "Sin información"}")
-                Text("Combustible: ${service["fuel"] ?: "Sin información"}")
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Lista desplegable para seleccionar estado
-                OutlinedTextField(
-                    value = selectedState,
-                    onValueChange = {},
-                    label = { Text("Seleccionar Estado") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned {
-                            textFieldSize = it.size.toSize()
-                        },
-                    readOnly = true,
-                    trailingIcon = {
-                        IconButton(onClick = { expanded = !expanded }) {
-                            Icon(Icons.Default.Add, contentDescription = "Abrir lista")
-                        }
+                // Información del cliente
+                item {
+                    SectionCard(title = "Información del Cliente") {
+                        Text("Nombre: ${service!!["clientName"] ?: "Desconocido"}")
+                        Text("DNI/RUC: ${service!!["clientDniRuc"] ?: "Sin información"}")
+                        Text("Dirección: ${service!!["clientAddress"] ?: "Sin información"}")
+                        Text("Teléfono: ${service!!["clientPhone"] ?: "Sin información"}")
+                        Text("Correo: ${service!!["clientEmail"] ?: "Sin información"}")
                     }
-                )
+                }
 
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.width(with(LocalDensity.current) { textFieldSize.width.toDp() })
-                ) {
-                    vehicleStates.forEach { state ->
-                        DropdownMenuItem(
-                            text = { Text(state) },
-                            onClick = {
-                                selectedState = state
-                                expanded = false
-                                // Lógica para guardar el estado seleccionado
-                                scope.launch {
-                                    viewModel.updateService(
-                                        userId = service["userId"] ?: "",
-                                        serviceId = serviceId,
-                                        updatedData = mapOf("vehicleState" to state),
-                                        onSuccess = { println("Estado actualizado a $state") },
-                                        onFailure = { println("Error al actualizar estado: $it") }
-                                    )
-                                }
-                            }
-                        )
+                // Información del vehículo
+                item {
+                    SectionCard(title = "Información del Vehículo") {
+                        Text("Placa: ${service!!["vehiclePlaca"] ?: "Sin información"}")
+                        Text("Marca: ${service!!["vehicleBrand"] ?: "Sin información"}")
+                        Text("Modelo: ${service!!["vehicleModel"] ?: "Sin información"}")
+                        Text("Año: ${service!!["vehicleYear"] ?: "Sin información"}")
+                        Text("Color: ${service!!["vehicleColor"] ?: "Sin información"}")
+                    }
+                }
+
+                // Información del servicio
+                item {
+                    SectionCard(title = "Información del Servicio") {
+                        Text("Fecha: ${service!!["date"] ?: "Sin información"}")
+                        Text("Hora: ${service!!["hour"] ?: "Sin información"}")
+                        Text("Combustible: ${service!!["fuel"] ?: "Sin información"}")
+                        Text("Kilometraje: ${service!!["mileage"] ?: "Sin información"}")
+                        Text("Estado: ${service!!["status"] ?: "Sin información"}")
+                        Text("Compañía: ${service!!["companyName"] ?: "Sin información"}")
                     }
                 }
             }
@@ -152,40 +90,23 @@ fun ServiceDetailsScreen(
                 color = MaterialTheme.colorScheme.error
             )
         }
+    }
+}
 
-        // Diálogo para agregar estado
-        if (showAddStateDialog) {
-            AlertDialog(
-                onDismissRequest = { showAddStateDialog = false },
-                title = { Text("Agregar Estado") },
-                text = {
-                    OutlinedTextField(
-                        value = newVehicleState,
-                        onValueChange = { newVehicleState = it },
-                        label = { Text("Nuevo Estado") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        if (newVehicleState.isNotBlank()) {
-                            scope.launch {
-                                viewModel.addVehicleState(newVehicleState) // Método en ViewModel
-                                vehicleStates.add(newVehicleState)
-                                newVehicleState = ""
-                                showAddStateDialog = false
-                            }
-                        }
-                    }) {
-                        Text("Agregar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showAddStateDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
+
+@Composable
+fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            content()
         }
     }
 }
+

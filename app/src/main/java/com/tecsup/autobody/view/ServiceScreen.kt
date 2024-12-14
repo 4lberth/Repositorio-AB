@@ -2,12 +2,16 @@ package com.tecsup.autobody.view
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,6 +53,10 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
 
     var mileage by remember { mutableStateOf("") }
 
+    // Estado para los detalles de trabajo
+    var newDetail by remember { mutableStateOf("") }
+    val workDetails = remember { mutableStateListOf<String>() }
+
     val context = LocalContext.current
 
     val calendar = Calendar.getInstance()
@@ -89,6 +97,7 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
         ) {
             Text("Agregar Servicio", style = MaterialTheme.typography.titleLarge)
 
+            // Selección de Compañía
             if (companies.isNotEmpty()) {
                 ExposedDropdownMenuBox(
                     expanded = expandedCompany,
@@ -108,7 +117,6 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                         },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                     )
-
                     ExposedDropdownMenu(
                         expanded = expandedCompany,
                         onDismissRequest = { expandedCompany = false },
@@ -127,6 +135,7 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             }
 
+            // Selección de Vehículo
             ExposedDropdownMenuBox(
                 expanded = expandedVehicle,
                 onExpandedChange = { expandedVehicle = !expandedVehicle },
@@ -145,32 +154,25 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                     },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                 )
-
                 ExposedDropdownMenu(
                     expanded = expandedVehicle,
                     onDismissRequest = { expandedVehicle = false },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (vehicles.isEmpty()) {
+                    vehicles.forEach { vehicle ->
+                        val placa = vehicle["placa"] ?: ""
                         DropdownMenuItem(
-                            text = { Text("No hay vehículos registrados") },
-                            onClick = { expandedVehicle = false }
+                            text = { Text(placa) },
+                            onClick = {
+                                selectedVehicle = placa
+                                expandedVehicle = false
+                            }
                         )
-                    } else {
-                        vehicles.forEach { vehicle ->
-                            val placa = vehicle["placa"] ?: ""
-                            DropdownMenuItem(
-                                text = { Text(placa) },
-                                onClick = {
-                                    selectedVehicle = placa
-                                    expandedVehicle = false
-                                }
-                            )
-                        }
                     }
                 }
             }
 
+            // Selección de Fecha
             OutlinedTextField(
                 value = selectedDate,
                 onValueChange = {},
@@ -184,14 +186,16 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             )
 
+            // Campo de Hora
             OutlinedTextField(
                 value = hourInput,
                 onValueChange = { hourInput = it },
                 label = { Text("Hora del Servicio") },
-                placeholder = { Text("Horario de atención: 8:00am - 17:30pm (Receso: 13:00pm - 14:00pm)") },
+                placeholder = { Text("Horario de atención: 8:00am - 17:30pm") },
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Selección de Nivel de Combustible
             ExposedDropdownMenuBox(
                 expanded = expandedFuel,
                 onExpandedChange = { expandedFuel = !expandedFuel },
@@ -210,7 +214,6 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                     },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                 )
-
                 ExposedDropdownMenu(
                     expanded = expandedFuel,
                     onDismissRequest = { expandedFuel = false },
@@ -228,6 +231,7 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             }
 
+            // Campo de Kilometraje
             OutlinedTextField(
                 value = mileage,
                 onValueChange = { mileage = it },
@@ -236,10 +240,46 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
+            // Detalles de Trabajo
+            OutlinedTextField(
+                value = newDetail,
+                onValueChange = { newDetail = it },
+                label = { Text("Detalle de Trabajo") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = {
+                    if (newDetail.isNotBlank()) {
+                        workDetails.add(newDetail)
+                        newDetail = ""
+                    }
+                },
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Añadir Detalle")
+            }
+
+            LazyColumn {
+                items(workDetails) { detail ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(detail, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { workDetails.remove(detail) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar Detalle")
+                        }
+                    }
+                }
+            }
+
             if (errorMessage.isNotEmpty()) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
 
+            // Botón para guardar el servicio
             Button(
                 onClick = {
                     if (selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
@@ -254,7 +294,16 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                                 fuel = selectedFuel,
                                 mileage = mileage,
                                 companyName = if (companies.isNotEmpty()) selectedCompany else "",
+                                workDetails = workDetails,
                                 onSuccess = {
+                                    // Restablecer los campos después de guardar
+                                    selectedCompany = ""
+                                    selectedVehicle = ""
+                                    selectedDate = ""
+                                    hourInput = ""
+                                    selectedFuel = ""
+                                    mileage = ""
+                                    workDetails.clear()
                                     errorMessage = "Servicio guardado con éxito."
                                 },
                                 onFailure = {
@@ -265,10 +314,12 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
                     } else {
                         errorMessage = "Por favor, complete todos los campos."
                     }
-                }
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text("Guardar Servicio")
             }
         }
     }
 }
+
