@@ -1,22 +1,15 @@
 package com.tecsup.autobody.view
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.toSize
 import androidx.navigation.NavController
 import com.tecsup.autobody.viewmodel.AuthViewModel
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +74,20 @@ fun ServiceDetailsScreen(
                         Text("Compañía: ${service!!["companyName"] ?: "Sin información"}")
                     }
                 }
+                // En ServiceDetailsScreen
+                item {
+                    SectionCard(title = "Detalles de Trabajo") {
+                        val workDetails = service!!["workDetails"] as? List<*> ?: emptyList<String>()
+                        if (workDetails.isEmpty()) {
+                            Text("No se encontraron detalles de trabajo.", style = MaterialTheme.typography.bodyMedium)
+                        } else {
+                            workDetails.forEach { detail ->
+                                Text("- $detail", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+
             }
         } else {
             Text(

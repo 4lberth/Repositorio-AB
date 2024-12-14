@@ -33,6 +33,13 @@ fun AdminHomeScreen(viewModel: AuthViewModel, navController: NavController) {
     val allServices by viewModel.services.collectAsState() // Servicios cargados
     var searchQuery by remember { mutableStateOf("") } // Filtro por placa
 
+    val filteredServices = allServices.filter { service ->
+        service["vehiclePlaca"]?.contains(searchQuery, ignoreCase = true) == true ||
+                (service["workDetails"] as? List<String>)?.any { detail ->
+                    detail.contains(searchQuery, ignoreCase = true)
+                } == true
+    }
+
     // Cargar servicios
     LaunchedEffect(Unit) {
         viewModel.fetchAllServices()
