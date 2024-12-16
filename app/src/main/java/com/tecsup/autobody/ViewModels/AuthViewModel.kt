@@ -138,7 +138,9 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             authRepository.logoutUser()
             _authState.value = AuthState.LoggedOut
         }
-    }fun loginUser(email: String, password: String, onRoleDetermined: (String) -> Unit) {
+    }
+
+    fun loginUser(email: String, password: String, onRoleDetermined: (String) -> Unit) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {

@@ -3,12 +3,19 @@ package com.tecsup.autobody.repository
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tecsup.autobody.viewmodel.AuthState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.tasks.await
 
 class AuthRepository {
 
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
+
+    private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
+    val authState: StateFlow<AuthState> = _authState
+
 
     /**
      * Registra un nuevo usuario en Firebase Authentication.
@@ -53,8 +60,10 @@ class AuthRepository {
      * Cierra la sesión del usuario actualmente autenticado.
      */
     fun logoutUser() {
-        auth.signOut()
+        FirebaseAuth.getInstance().signOut()
+        _authState.value = AuthState.LoggedOut
     }
+
 
     /**
      * Obtiene el estado actual del usuario autenticado.
