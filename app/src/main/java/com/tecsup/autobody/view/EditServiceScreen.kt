@@ -48,7 +48,7 @@ fun EditServiceScreen(
     var editingDetail by remember { mutableStateOf("") }
     var newDetail by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
-    var deletingDetailIndex by remember { mutableStateOf(-1) } // Índice del detalle que se eliminará
+    var deletingDetailIndex by remember { mutableStateOf(-1) }
 
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val context = LocalContext.current
@@ -57,10 +57,15 @@ fun EditServiceScreen(
     val personalCompanies by viewModel.personalCompanies.collectAsState(initial = emptyList())
     val companyOptions = personalCompanies.map { it.name }
 
+    // Obtener lista de placas de vehículos desde ViewModel
+    val vehicles by viewModel.vehicles.collectAsState()
+    val vehicleOptions = vehicles.map { it["placa"] ?: "" }
+
     // Cargar datos del servicio al iniciar
     LaunchedEffect(serviceId) {
         try {
             viewModel.fetchPersonalCompanies(userId)
+            viewModel.fetchVehicles(userId) // Asegura que se obtengan los vehículos
             val service = viewModel.services.value.find { it["id"] == serviceId }
             if (service != null) {
                 placa = service["vehiclePlaca"] ?: ""
@@ -92,7 +97,6 @@ fun EditServiceScreen(
             )
         }
     ) { paddingValues ->
-        // Hacer que todo el contenido sea desplazable
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -101,11 +105,12 @@ fun EditServiceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Campos del formulario
-            OutlinedTextField(
-                value = placa,
-                onValueChange = { placa = it },
-                label = { Text("Placa del Vehículo") },
+            // Lista desplegable para Placa
+            DropdownMenuField(
+                label = "Placa del Vehículo",
+                options = vehicleOptions,
+                selectedOption = placa,
+                onOptionSelected = { placa = it },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -113,7 +118,6 @@ fun EditServiceScreen(
                 value = date,
                 onValueChange = {},
                 label = { Text("Fecha del Servicio") },
-                modifier = Modifier.fillMaxWidth(),
                 readOnly = true,
                 trailingIcon = {
                     IconButton(onClick = {
@@ -165,7 +169,6 @@ fun EditServiceScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Lista de Detalles de Trabajo
             Text("Detalles de Trabajo:", style = MaterialTheme.typography.titleMedium)
             workDetails.forEachIndexed { index, detail ->
                 Row(
@@ -182,7 +185,7 @@ fun EditServiceScreen(
                             Icon(Icons.Default.Edit, contentDescription = "Editar Detalle")
                         }
                         IconButton(onClick = {
-                            deletingDetailIndex = index // Establecer el índice para eliminar
+                            deletingDetailIndex = index
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = "Eliminar Detalle")
                         }
@@ -190,7 +193,6 @@ fun EditServiceScreen(
                 }
             }
 
-            // Campo para añadir un nuevo detalle
             OutlinedTextField(
                 value = newDetail,
                 onValueChange = { newDetail = it },
@@ -210,7 +212,6 @@ fun EditServiceScreen(
                 Text("Añadir Detalle")
             }
 
-            // Botón para guardar cambios
             Button(
                 onClick = {
                     if (placa.isNotBlank() && date.isNotBlank() && hour.isNotBlank() && fuel.isNotBlank() && mileage.isNotBlank()) {
@@ -225,12 +226,11 @@ fun EditServiceScreen(
                                     "fuel" to fuel,
                                     "mileage" to mileage,
                                     "companyName" to selectedCompany,
-                                    "workDetails" to workDetails.toList() // Esto puede ser List<String>
+                                    "workDetails" to workDetails.toList()
                                 ),
                                 onSuccess = { navController.popBackStack() },
                                 onFailure = { error -> errorMessage = error }
                             )
-
                         }
                     } else {
                         errorMessage = "Por favor, completa todos los campos."
@@ -241,73 +241,13 @@ fun EditServiceScreen(
                 Text("Guardar Cambios")
             }
 
-            // Mostrar errores
             if (errorMessage.isNotEmpty()) {
                 Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
         }
     }
-
-    // Ventana flotante para editar un detalle
-    if (editingDetailIndex != -1) {
-        AlertDialog(
-            onDismissRequest = {
-                editingDetailIndex = -1
-                editingDetail = ""
-            },
-            title = { Text("Editar Detalle") },
-            text = {
-                OutlinedTextField(
-                    value = editingDetail,
-                    onValueChange = { editingDetail = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Detalle de Trabajo") }
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (editingDetail.isNotBlank()) {
-                        workDetails[editingDetailIndex] = editingDetail
-                        editingDetailIndex = -1
-                        editingDetail = ""
-                    }
-                }) {
-                    Text("Guardar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    editingDetailIndex = -1
-                    editingDetail = ""
-                }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-
-    // Ventana de confirmación para eliminar un detalle
-    if (deletingDetailIndex != -1) {
-        AlertDialog(
-            onDismissRequest = { deletingDetailIndex = -1 },
-            title = { Text("Confirmar Eliminación") },
-            text = { Text("¿Estás seguro de que deseas eliminar este detalle?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    workDetails.removeAt(deletingDetailIndex)
-                    deletingDetailIndex = -1
-                }) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deletingDetailIndex = -1 }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
 }
+
 
 
 @Composable
@@ -350,3 +290,4 @@ fun DropdownMenuField(
         }
     }
 }
+

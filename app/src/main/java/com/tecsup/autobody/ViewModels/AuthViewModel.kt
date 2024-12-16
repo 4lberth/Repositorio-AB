@@ -401,24 +401,23 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
         viewModelScope.launch {
             try {
                 val updatedVehicleData = vehicleData.toMutableMap()
-                val placa = updatedVehicleData["placa"] ?: ""
+                val newPlaca = updatedVehicleData["placa"] ?: ""
 
-                // Verificar si la placa ya existe en otro usuario
-                val querySnapshot = firestore.collectionGroup("vehicles")
-                    .whereEqualTo("placa", placa)
+                // Obtener la placa antigua antes de actualizar
+                val vehicleDoc = firestore.collection("users")
+                    .document(userId)
+                    .collection("vehicles")
+                    .document(vehicleId)
                     .get()
                     .await()
-
-                if (querySnapshot.documents.any { it.id != vehicleId }) {
-                    onFailure("La placa $placa ya está registrada.")
-                    return@launch
-                }
+                val oldPlaca = vehicleDoc.getString("placa") ?: ""
 
                 if (imageUri != null) {
                     val imageUrl = uploadVehicleImage(userId, imageUri)
                     updatedVehicleData["imageUrl"] = imageUrl
                 }
 
+                // Actualizar el documento del vehículo
                 firestore.collection("users")
                     .document(userId)
                     .collection("vehicles")
@@ -426,13 +425,29 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     .set(updatedVehicleData)
                     .await()
 
+                // Actualizar todos los servicios que referencian la placa antigua
+                val servicesSnapshot = firestore.collection("users")
+                    .document(userId)
+                    .collection("services")
+                    .whereEqualTo("vehiclePlaca", oldPlaca)
+                    .get()
+                    .await()
+
+                for (serviceDoc in servicesSnapshot.documents) {
+                    serviceDoc.reference.update("vehiclePlaca", newPlaca).await()
+                }
+
+                // Actualizar los estados locales
                 fetchVehicles(userId)
+                fetchServices(userId)
                 onSuccess()
             } catch (e: Exception) {
                 onFailure("Error al actualizar el vehículo: ${e.message}")
             }
         }
     }
+
+
 
     fun deleteVehicle(
         userId: String,
@@ -542,7 +557,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     fun updateService(
         userId: String?,
         serviceId: String,
-        updatedData: Map<String, Any?>, // <-- Cambiado a Any?
+        updatedData: Map<String, Any?>,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
@@ -560,21 +575,15 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     .update(updatedData)
                     .await()
 
-                // Actualizar localmente el estado de la lista
-                _services.value = _services.value.map { service ->
-                    if (service["id"] == serviceId) {
-                        service.toMutableMap().apply {
-                            updatedData.forEach { (key, value) -> this[key] = value.toString() }
-                        }
-                    } else service
-                }
-
+                fetchServices(userId) // Actualiza servicios
+                fetchVehicles(userId) // Sincroniza vehículos
                 onSuccess()
             } catch (e: Exception) {
                 onFailure("Error al actualizar servicio: ${e.message}")
             }
         }
     }
+
 
 
 

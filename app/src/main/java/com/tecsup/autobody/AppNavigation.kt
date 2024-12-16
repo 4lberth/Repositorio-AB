@@ -1,6 +1,8 @@
 package com.tecsup.autobody
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,13 +16,13 @@ import com.tecsup.autobody.viewmodel.AuthViewModel
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    val authViewModel = remember { AuthViewModel() } // El ViewModel se conserva entre las pantallas
+    val authViewModel = remember { AuthViewModel() }
 
     var startDestination by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     val currentUser = FirebaseAuth.getInstance().currentUser
 
-    // Verificar si hay un usuario autenticado y obtener su rol
+    // Verificar estado de usuario y definir la pantalla inicial
     LaunchedEffect(currentUser) {
         if (currentUser != null) {
             authViewModel.fetchUserRole(currentUser.uid) {
@@ -29,7 +31,7 @@ fun AppNavigation() {
                 } else {
                     "home"
                 }
-                isLoading = false // Finaliza la carga
+                isLoading = false
             }
         } else {
             startDestination = "login"
@@ -37,16 +39,18 @@ fun AppNavigation() {
         }
     }
 
-    // Pantalla de carga mientras se verifica el rol
     if (isLoading || startDestination == null) {
         LoadingScreen()
     } else {
         // Observa la ruta actual
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = currentBackStackEntry?.destination?.route
+        val currentDestination = currentBackStackEntry?.destination
+        val currentRoute = currentDestination?.route
 
         // Determina si mostrar el BottomBar
-        val showBottomBar = currentRoute !in listOf("login", "register", "admin_home", "service_details?serviceId={serviceId}")
+        val showBottomBar = currentRoute !in listOf(
+            "login", "register", "admin_home", "service_details?serviceId={serviceId}"
+        )
 
         Scaffold(
             bottomBar = {
@@ -76,7 +80,7 @@ fun AppNavigation() {
         ) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = startDestination!!, // Se asegura que ya no es nulo
+                startDestination = startDestination!!,
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable("login") { LoginScreen(navController, authViewModel) }
@@ -87,9 +91,6 @@ fun AppNavigation() {
                         viewModel = authViewModel,
                         navController = navController
                     )
-                }
-                composable("admin_home") {
-                    AdminHomeScreen(viewModel = authViewModel, navController = navController)
                 }
                 composable("add_vehicle") {
                     AddVehicleScreen(
@@ -110,6 +111,18 @@ fun AppNavigation() {
                 }
                 composable("service") {
                     ServiceScreen(navController = navController, viewModel = authViewModel)
+                }
+                composable("admin_home") {
+                    AdminHomeScreen(viewModel = authViewModel, navController = navController)
+                }
+                composable("edit_service?serviceId={serviceId}") { backStackEntry ->
+                    val serviceId = backStackEntry.arguments?.getString("serviceId") ?: ""
+                    EditServiceScreen(
+                        serviceId = serviceId,
+                        userId = currentUser?.uid.orEmpty(),
+                        viewModel = authViewModel,
+                        navController = navController
+                    )
                 }
                 composable("service_details?serviceId={serviceId}") { backStackEntry ->
                     val serviceId = backStackEntry.arguments?.getString("serviceId") ?: ""

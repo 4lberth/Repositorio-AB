@@ -27,6 +27,7 @@ fun ServiceDetailsScreen(
         derivedStateOf { viewModel.services.value.find { it["id"] == serviceId } }
     }
     var showDialog by remember { mutableStateOf(false) }
+    var showVehicleDialog by remember { mutableStateOf(false) } // Estado para editar vehículo
 
     Scaffold(
         topBar = {
@@ -67,6 +68,15 @@ fun ServiceDetailsScreen(
                         Text("Modelo: ${service!!["vehicleModel"] ?: "Sin información"}")
                         Text("Año: ${service!!["vehicleYear"] ?: "Sin información"}")
                         Text("Color: ${service!!["vehicleColor"] ?: "Sin información"}")
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { showVehicleDialog = true }) {
+                                Text("Editar")
+                            }
+                        }
                     }
                 }
 
@@ -105,7 +115,7 @@ fun ServiceDetailsScreen(
                 }
             }
 
-            // Diálogo de edición
+            // Diálogo de edición del servicio
             if (showDialog) {
                 EditServiceDialog(
                     service = service!!,
@@ -126,6 +136,29 @@ fun ServiceDetailsScreen(
                     }
                 )
             }
+
+            // Diálogo de edición del vehículo
+            if (showVehicleDialog) {
+                EditVehicleDialog(
+                    vehicleData = service!!,
+                    onDismiss = { showVehicleDialog = false },
+                    onSave = { updatedData ->
+                        val userId = service!!["userId"] ?: ""
+                        viewModel.updateVehicle(
+                            userId = userId,
+                            vehicleId = service!!["vehicleId"] ?: "",
+                            vehicleData = updatedData,
+                            imageUri = null,
+                            onSuccess = {
+                                println("Vehículo actualizado correctamente.")
+                                refreshTrigger++ // Recomponer la UI
+                            },
+                            onFailure = { error -> println("Error al actualizar vehículo: $error") }
+                        )
+                        showVehicleDialog = false
+                    }
+                )
+            }
         } else {
             Text(
                 text = "Servicio no encontrado.",
@@ -136,7 +169,6 @@ fun ServiceDetailsScreen(
         }
     }
 }
-
 
 @Composable
 fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
@@ -153,6 +185,70 @@ fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditVehicleDialog(
+    vehicleData: Map<String, String>,
+    onDismiss: () -> Unit,
+    onSave: (Map<String, String>) -> Unit
+) {
+    var placa by remember { mutableStateOf(vehicleData["vehiclePlaca"] ?: "") }
+    var marca by remember { mutableStateOf(vehicleData["vehicleBrand"] ?: "") }
+    var modelo by remember { mutableStateOf(vehicleData["vehicleModel"] ?: "") }
+    var year by remember { mutableStateOf(vehicleData["vehicleYear"] ?: "") }
+    var color by remember { mutableStateOf(vehicleData["vehicleColor"] ?: "") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.75f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .padding(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text("Editar Vehículo", style = MaterialTheme.typography.titleLarge)
+
+                OutlinedTextField(value = placa, onValueChange = { placa = it }, label = { Text("Placa") })
+                OutlinedTextField(value = marca, onValueChange = { marca = it }, label = { Text("Marca") })
+                OutlinedTextField(value = modelo, onValueChange = { modelo = it }, label = { Text("Modelo") })
+                OutlinedTextField(value = year, onValueChange = { year = it }, label = { Text("Año") })
+                OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color") })
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    Button(onClick = {
+                        onSave(
+                            mapOf(
+                                "vehiclePlaca" to placa,
+                                "vehicleBrand" to marca,
+                                "vehicleModel" to modelo,
+                                "vehicleYear" to year,
+                                "vehicleColor" to color
+                            )
+                        )
+                    }) {
+                        Text("Guardar")
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
