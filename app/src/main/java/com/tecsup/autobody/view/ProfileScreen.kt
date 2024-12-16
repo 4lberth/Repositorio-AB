@@ -2,7 +2,6 @@ package com.tecsup.autobody.view
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -11,12 +10,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.tecsup.autobody.viewmodel.AuthViewModel
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(userId: String, viewModel: AuthViewModel, navController: NavController) {
-    val scope = rememberCoroutineScope()
 
     var userName by remember { mutableStateOf("") }
     var userDni by remember { mutableStateOf("") }

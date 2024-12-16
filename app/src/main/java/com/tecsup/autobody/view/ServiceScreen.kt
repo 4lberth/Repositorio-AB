@@ -53,7 +53,6 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
 
     var mileage by remember { mutableStateOf("") }
 
-    // Estado para los detalles de trabajo
     var newDetail by remember { mutableStateOf("") }
     val workDetails = remember { mutableStateListOf<String>() }
 
@@ -88,237 +87,263 @@ fun ServiceScreen(navController: NavController, viewModel: AuthViewModel) {
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(16.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Agregar Servicio", style = MaterialTheme.typography.titleLarge)
+            item {
+                Text("Agregar Servicio", style = MaterialTheme.typography.titleLarge)
+            }
 
             // Selección de Compañía
             if (companies.isNotEmpty()) {
-                ExposedDropdownMenuBox(
-                    expanded = expandedCompany,
-                    onExpandedChange = { expandedCompany = !expandedCompany },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = selectedCompany,
-                        onValueChange = {},
-                        label = { Text("Seleccionar Compañía") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCompany)
-                        },
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                    )
-                    ExposedDropdownMenu(
+                item {
+                    ExposedDropdownMenuBox(
                         expanded = expandedCompany,
-                        onDismissRequest = { expandedCompany = false },
+                        onExpandedChange = { expandedCompany = !expandedCompany },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        companies.forEach { company ->
-                            DropdownMenuItem(
-                                text = { Text(company.name) },
-                                onClick = {
-                                    selectedCompany = company.name
-                                    expandedCompany = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = selectedCompany,
+                            onValueChange = {},
+                            label = { Text("Seleccionar Compañía") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true,
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCompany)
+                            },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedCompany,
+                            onDismissRequest = { expandedCompany = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            companies.forEach { company ->
+                                DropdownMenuItem(
+                                    text = { Text(company.name) },
+                                    onClick = {
+                                        selectedCompany = company.name
+                                        expandedCompany = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
 
             // Selección de Vehículo
-            ExposedDropdownMenuBox(
-                expanded = expandedVehicle,
-                onExpandedChange = { expandedVehicle = !expandedVehicle },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedVehicle,
-                    onValueChange = {},
-                    label = { Text("Seleccionar Vehículo") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    readOnly = true,
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedVehicle)
-                    },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                )
-                ExposedDropdownMenu(
+            item {
+                ExposedDropdownMenuBox(
                     expanded = expandedVehicle,
-                    onDismissRequest = { expandedVehicle = false },
+                    onExpandedChange = { expandedVehicle = !expandedVehicle },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    vehicles.forEach { vehicle ->
-                        val placa = vehicle["placa"] ?: ""
-                        DropdownMenuItem(
-                            text = { Text(placa) },
-                            onClick = {
-                                selectedVehicle = placa
-                                expandedVehicle = false
-                            }
-                        )
+                    OutlinedTextField(
+                        value = selectedVehicle,
+                        onValueChange = {},
+                        label = { Text("Seleccionar Vehículo") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        readOnly = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedVehicle)
+                        },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedVehicle,
+                        onDismissRequest = { expandedVehicle = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        vehicles.forEach { vehicle ->
+                            val placa = vehicle["placa"] ?: ""
+                            DropdownMenuItem(
+                                text = { Text(placa) },
+                                onClick = {
+                                    selectedVehicle = placa
+                                    expandedVehicle = false
+                                }
+                            )
+                        }
                     }
                 }
             }
 
             // Selección de Fecha
-            OutlinedTextField(
-                value = selectedDate,
-                onValueChange = {},
-                label = { Text("Fecha del Servicio") },
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true,
-                trailingIcon = {
-                    IconButton(onClick = { showDatePicker() }) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar Fecha")
-                    }
-                }
-            )
-
-            // Campo de Hora
-            OutlinedTextField(
-                value = hourInput,
-                onValueChange = { hourInput = it },
-                label = { Text("Hora del Servicio") },
-                placeholder = { Text("Horario de atención: 8:00am - 17:30pm") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Selección de Nivel de Combustible
-            ExposedDropdownMenuBox(
-                expanded = expandedFuel,
-                onExpandedChange = { expandedFuel = !expandedFuel },
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            item {
                 OutlinedTextField(
-                    value = selectedFuel,
+                    value = selectedDate,
                     onValueChange = {},
-                    label = { Text("Nivel de Combustible") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
+                    label = { Text("Fecha del Servicio") },
+                    modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFuel)
-                    },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        IconButton(onClick = { showDatePicker() }) {
+                            Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar Fecha")
+                        }
+                    }
                 )
-                ExposedDropdownMenu(
+            }
+
+            // Campo de Hora
+            item {
+                OutlinedTextField(
+                    value = hourInput,
+                    onValueChange = { hourInput = it },
+                    label = { Text("Hora del Servicio") },
+                    placeholder = { Text("Horario de atención: 8:00am - 17:30pm") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Selección de Nivel de Combustible
+            item {
+                ExposedDropdownMenuBox(
                     expanded = expandedFuel,
-                    onDismissRequest = { expandedFuel = false },
+                    onExpandedChange = { expandedFuel = !expandedFuel },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    fuelLevels.forEach { level ->
-                        DropdownMenuItem(
-                            text = { Text(level) },
-                            onClick = {
-                                selectedFuel = level
-                                expandedFuel = false
-                            }
-                        )
+                    OutlinedTextField(
+                        value = selectedFuel,
+                        onValueChange = {},
+                        label = { Text("Nivel de Combustible") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        readOnly = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFuel)
+                        },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedFuel,
+                        onDismissRequest = { expandedFuel = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        fuelLevels.forEach { level ->
+                            DropdownMenuItem(
+                                text = { Text(level) },
+                                onClick = {
+                                    selectedFuel = level
+                                    expandedFuel = false
+                                }
+                            )
+                        }
                     }
                 }
             }
 
             // Campo de Kilometraje
-            OutlinedTextField(
-                value = mileage,
-                onValueChange = { mileage = it },
-                label = { Text("Kilometraje") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // Detalles de Trabajo
-            OutlinedTextField(
-                value = newDetail,
-                onValueChange = { newDetail = it },
-                label = { Text("Detalle de Trabajo") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(
-                onClick = {
-                    if (newDetail.isNotBlank()) {
-                        workDetails.add(newDetail)
-                        newDetail = ""
-                    }
-                },
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text("Añadir Detalle")
+            item {
+                OutlinedTextField(
+                    value = mileage,
+                    onValueChange = { mileage = it },
+                    label = { Text("Kilometraje") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
             }
 
-            LazyColumn {
-                items(workDetails) { detail ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(detail, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { workDetails.remove(detail) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar Detalle")
+            // Detalles de Trabajo
+            item {
+                OutlinedTextField(
+                    value = newDetail,
+                    onValueChange = { newDetail = it },
+                    label = { Text("Detalle de Trabajo") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = {
+                            if (newDetail.isNotBlank()) {
+                                workDetails.add(newDetail)
+                                newDetail = ""
+                            }
                         }
+                    ) {
+                        Text("Añadir Detalle")
+                    }
+                }
+            }
+
+            items(workDetails) { detail ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(detail, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { workDetails.remove(detail) }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Eliminar Detalle")
                     }
                 }
             }
 
             if (errorMessage.isNotEmpty()) {
-                Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                item {
+                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                }
             }
 
             // Botón para guardar el servicio
-            Button(
-                onClick = {
-                    if (selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
-                        hourInput.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
-                    ) {
-                        scope.launch {
-                            viewModel.addService(
-                                userId = userId,
-                                vehiclePlaca = selectedVehicle,
-                                date = selectedDate,
-                                hour = hourInput,
-                                fuel = selectedFuel,
-                                mileage = mileage,
-                                companyName = if (companies.isNotEmpty()) selectedCompany else "",
-                                workDetails = workDetails,
-                                onSuccess = {
-                                    // Restablecer los campos después de guardar
-                                    selectedCompany = ""
-                                    selectedVehicle = ""
-                                    selectedDate = ""
-                                    hourInput = ""
-                                    selectedFuel = ""
-                                    mileage = ""
-                                    workDetails.clear()
-                                    errorMessage = "Servicio guardado con éxito."
-                                },
-                                onFailure = {
-                                    errorMessage = it
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth(), // Para ocupar todo el ancho
+                    contentAlignment = Alignment.Center // Centrar horizontalmente
+                ) {
+                    Button(
+                        onClick = {
+                            if (selectedVehicle.isNotBlank() && selectedDate.isNotBlank() &&
+                                hourInput.isNotBlank() && selectedFuel.isNotBlank() && mileage.isNotBlank()
+                            ) {
+                                scope.launch {
+                                    viewModel.addService(
+                                        userId = userId,
+                                        vehiclePlaca = selectedVehicle,
+                                        date = selectedDate,
+                                        hour = hourInput,
+                                        fuel = selectedFuel,
+                                        mileage = mileage,
+                                        companyName = if (companies.isNotEmpty()) selectedCompany else "",
+                                        workDetails = workDetails,
+                                        onSuccess = {
+                                            selectedCompany = ""
+                                            selectedVehicle = ""
+                                            selectedDate = ""
+                                            hourInput = ""
+                                            selectedFuel = ""
+                                            mileage = ""
+                                            workDetails.clear()
+                                            errorMessage = "Servicio guardado con éxito."
+                                        },
+                                        onFailure = {
+                                            errorMessage = it
+                                        }
+                                    )
                                 }
-                            )
-                        }
-                    } else {
-                        errorMessage = "Por favor, complete todos los campos."
+                            } else {
+                                errorMessage = "Por favor, complete todos los campos."
+                            }
+                        },
+                    ) {
+                        Text("Guardar Servicio")
                     }
-                },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text("Guardar Servicio")
+                }
             }
+
         }
     }
 }

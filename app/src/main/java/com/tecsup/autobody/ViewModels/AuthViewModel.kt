@@ -572,27 +572,27 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     }
 
 
-    suspend fun fetchVehicleStates(): List<String> {
-        return try {
-            val snapshot = firestore.collection("vehicleStates").get().await()
-            snapshot.documents.mapNotNull { it.getString("state") }
-        } catch (e: Exception) {
-            println("Error al obtener estados del vehículo: ${e.message}")
-            emptyList()
-        }
-    }
-
-    fun addVehicleState(newState: String) {
-        viewModelScope.launch {
-            try {
-                val data = mapOf("state" to newState)
-                firestore.collection("vehicleStates").add(data).await()
-                println("Estado agregado exitosamente: $newState")
-            } catch (e: Exception) {
-                println("Error al agregar estado del vehículo: ${e.message}")
-            }
-        }
-    }
+//    suspend fun fetchVehicleStates(): List<String> {
+//        return try {
+//            val snapshot = firestore.collection("vehicleStates").get().await()
+//            snapshot.documents.mapNotNull { it.getString("state") }
+//        } catch (e: Exception) {
+//            println("Error al obtener estados del vehículo: ${e.message}")
+//            emptyList()
+//        }
+//    }
+//
+//    fun addVehicleState(newState: String) {
+//        viewModelScope.launch {
+//            try {
+//                val data = mapOf("state" to newState)
+//                firestore.collection("vehicleStates").add(data).await()
+//                println("Estado agregado exitosamente: $newState")
+//            } catch (e: Exception) {
+//                println("Error al agregar estado del vehículo: ${e.message}")
+//            }
+//        }
+//    }
 
 
     // Métodos relacionados con usuarios

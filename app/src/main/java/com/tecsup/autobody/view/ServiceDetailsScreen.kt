@@ -1,5 +1,6 @@
 package com.tecsup.autobody.view
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -11,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.tecsup.autobody.viewmodel.AuthViewModel
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceDetailsScreen(
@@ -18,8 +20,8 @@ fun ServiceDetailsScreen(
     viewModel: AuthViewModel,
     navController: NavController
 ) {
-    // Usar estado recordable
-    val service by remember { derivedStateOf { viewModel.services.value.find { it["id"] == serviceId } } }
+    // Buscar el servicio basado en el ID
+    val service = viewModel.services.value.find { it["id"] == serviceId }
 
     Scaffold(
         topBar = {
@@ -34,6 +36,11 @@ fun ServiceDetailsScreen(
         }
     ) { paddingValues ->
         if (service != null) {
+            // Declarar las variables aquí, ya que service no es null
+            val currentStatus = service["status"] ?: "pendiente"
+            val companyName = service["companyName"]
+            val workDetails = service["workDetails"] as? List<*> ?: emptyList<String>()
+
             LazyColumn(
                 modifier = Modifier
                     .padding(paddingValues)
@@ -44,40 +51,54 @@ fun ServiceDetailsScreen(
                 // Información del cliente
                 item {
                     SectionCard(title = "Información del Cliente") {
-                        Text("Nombre: ${service!!["clientName"] ?: "Desconocido"}")
-                        Text("DNI/RUC: ${service!!["clientDniRuc"] ?: "Sin información"}")
-                        Text("Dirección: ${service!!["clientAddress"] ?: "Sin información"}")
-                        Text("Teléfono: ${service!!["clientPhone"] ?: "Sin información"}")
-                        Text("Correo: ${service!!["clientEmail"] ?: "Sin información"}")
+                        Text("Nombre: ${service["clientName"] ?: "Desconocido"}")
+                        Text("DNI/RUC: ${service["clientDniRuc"] ?: "Sin información"}")
+                        Text("Dirección: ${service["clientAddress"] ?: "Sin información"}")
+                        Text("Teléfono: ${service["clientPhone"] ?: "Sin información"}")
+                        Text("Correo: ${service["clientEmail"] ?: "Sin información"}")
                     }
                 }
 
                 // Información del vehículo
                 item {
                     SectionCard(title = "Información del Vehículo") {
-                        Text("Placa: ${service!!["vehiclePlaca"] ?: "Sin información"}")
-                        Text("Marca: ${service!!["vehicleBrand"] ?: "Sin información"}")
-                        Text("Modelo: ${service!!["vehicleModel"] ?: "Sin información"}")
-                        Text("Año: ${service!!["vehicleYear"] ?: "Sin información"}")
-                        Text("Color: ${service!!["vehicleColor"] ?: "Sin información"}")
+                        Text("Placa: ${service["vehiclePlaca"] ?: "Sin información"}")
+                        Text("Marca: ${service["vehicleBrand"] ?: "Sin información"}")
+                        Text("Modelo: ${service["vehicleModel"] ?: "Sin información"}")
+                        Text("Año: ${service["vehicleYear"] ?: "Sin información"}")
+                        Text("Color: ${service["vehicleColor"] ?: "Sin información"}")
                     }
                 }
 
                 // Información del servicio
                 item {
                     SectionCard(title = "Información del Servicio") {
-                        Text("Fecha: ${service!!["date"] ?: "Sin información"}")
-                        Text("Hora: ${service!!["hour"] ?: "Sin información"}")
-                        Text("Combustible: ${service!!["fuel"] ?: "Sin información"}")
-                        Text("Kilometraje: ${service!!["mileage"] ?: "Sin información"}")
-                        Text("Estado: ${service!!["status"] ?: "Sin información"}")
-                        Text("Compañía: ${service!!["companyName"] ?: "Sin información"}")
+                        Text("Fecha: ${service["date"] ?: "Sin información"}")
+                        Text("Hora: ${service["hour"] ?: "Sin información"}")
+                        Text("Combustible: ${service["fuel"] ?: "Sin información"}")
+                        Text("Kilometraje: ${service["mileage"] ?: "Sin información"}")
+                        Text(
+                            text = "Estado: $currentStatus",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = when (currentStatus) {
+                                "confirmado" -> MaterialTheme.colorScheme.primary
+                                "pendiente" -> MaterialTheme.colorScheme.secondary
+                                "cancelado" -> MaterialTheme.colorScheme.error
+                                else -> MaterialTheme.colorScheme.onBackground
+                            }
+                        )
+                        // Mostrar "Vehículo: Particular" si no hay compañía relacionada
+                        if (companyName.isNullOrBlank()) {
+                            Text("Vehículo: Particular", style = MaterialTheme.typography.bodyMedium)
+                        } else {
+                            Text("Compañía: $companyName", style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
-                // En ServiceDetailsScreen
+
+                // Detalles de trabajo
                 item {
                     SectionCard(title = "Detalles de Trabajo") {
-                        val workDetails = service!!["workDetails"] as? List<*> ?: emptyList<String>()
                         if (workDetails.isEmpty()) {
                             Text("No se encontraron detalles de trabajo.", style = MaterialTheme.typography.bodyMedium)
                         } else {
@@ -87,9 +108,9 @@ fun ServiceDetailsScreen(
                         }
                     }
                 }
-
             }
         } else {
+            // Manejar el caso donde no se encuentra el servicio
             Text(
                 text = "Servicio no encontrado.",
                 modifier = Modifier.padding(16.dp),
@@ -99,6 +120,7 @@ fun ServiceDetailsScreen(
         }
     }
 }
+
 
 
 @Composable
