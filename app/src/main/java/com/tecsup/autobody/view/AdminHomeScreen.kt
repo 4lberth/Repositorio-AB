@@ -235,7 +235,7 @@ fun AdminServiceCard(
                                 updatedData = mapOf("status" to newStatus),
                                 onSuccess = {
                                     println("Estado actualizado correctamente a $newStatus")
-                                    viewModel.fetchAllServices() // Actualizar lista
+
                                 },
                                 onFailure = { error -> println("Error al actualizar estado: $error") }
                             )

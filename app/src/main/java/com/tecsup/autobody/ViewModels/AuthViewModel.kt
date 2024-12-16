@@ -540,7 +540,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     fun updateService(
         userId: String?,
         serviceId: String,
-        updatedData: Map<String, Any>, // Cambiado a Any para permitir listas
+        updatedData: Map<String, Any>,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
@@ -551,11 +551,6 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
             }
 
             try {
-                if (updatedData.isEmpty()) {
-                    onFailure("Los datos a actualizar están vacíos")
-                    return@launch
-                }
-
                 firestore.collection("users")
                     .document(userId)
                     .collection("services")
@@ -563,13 +558,23 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     .update(updatedData)
                     .await()
 
-                fetchServices(userId) // Actualiza la lista después de un cambio
+                // Actualiza solo el servicio modificado localmente
+                _services.value = _services.value.map { service ->
+                    if (service["id"] == serviceId) {
+                        service.toMutableMap().apply {
+                            updatedData.forEach { (key, value) ->
+                                this[key] = value.toString()
+                            }
+                        }
+                    } else service
+                }
                 onSuccess()
             } catch (e: Exception) {
                 onFailure("Error al actualizar servicio: ${e.message}")
             }
         }
     }
+
 
 
 //    suspend fun fetchVehicleStates(): List<String> {
