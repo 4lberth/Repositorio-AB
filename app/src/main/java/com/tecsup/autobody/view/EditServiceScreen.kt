@@ -225,11 +225,12 @@ fun EditServiceScreen(
                                     "fuel" to fuel,
                                     "mileage" to mileage,
                                     "companyName" to selectedCompany,
-                                    "workDetails" to workDetails.toList()
+                                    "workDetails" to workDetails.toList() // Esto puede ser List<String>
                                 ),
                                 onSuccess = { navController.popBackStack() },
                                 onFailure = { error -> errorMessage = error }
                             )
+
                         }
                     } else {
                         errorMessage = "Por favor, completa todos los campos."

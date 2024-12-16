@@ -540,7 +540,7 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
     fun updateService(
         userId: String?,
         serviceId: String,
-        updatedData: Map<String, Any>,
+        updatedData: Map<String, Any?>, // <-- Cambiado a Any?
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
@@ -558,22 +558,23 @@ class AuthViewModel(private val authRepository: AuthRepository = AuthRepository(
                     .update(updatedData)
                     .await()
 
-                // Actualiza solo el servicio modificado localmente
+                // Actualizar localmente el estado de la lista
                 _services.value = _services.value.map { service ->
                     if (service["id"] == serviceId) {
                         service.toMutableMap().apply {
-                            updatedData.forEach { (key, value) ->
-                                this[key] = value.toString()
-                            }
+                            updatedData.forEach { (key, value) -> this[key] = value.toString() }
                         }
                     } else service
                 }
+
                 onSuccess()
             } catch (e: Exception) {
                 onFailure("Error al actualizar servicio: ${e.message}")
             }
         }
     }
+
+
 
 
 
